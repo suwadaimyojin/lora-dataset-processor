@@ -1,0 +1,1260 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>批量智能裁剪 (Birme 风格演示)</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        margin: 0;
+        display: flex;
+        height: 100vh;
+        background-color: #f0f2f5;
+      }
+      .main-content {
+        flex-grow: 1;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
+      }
+      .sidebar {
+        width: 320px;
+        background-color: #ffffff;
+        padding: 20px;
+        box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
+        display: flex;
+        flex-direction: column;
+      }
+
+      .file-drop-area {
+        border: 2px dashed #ccc;
+        padding: 30px;
+        text-align: center;
+        margin-bottom: 20px;
+        background-color: #fafafa;
+        cursor: pointer;
+      }
+      .file-drop-area.dragover {
+        background-color: #e0e0e0;
+        border-color: #aaa;
+      }
+
+      .image-tiles-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
+        justify-content: flex-start;
+      }
+      .tile {
+        width: 360px; /* 瓦片宽度 */
+        border: 1px solid #ddd;
+        background-color: #fff;
+        padding: 8px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        position: relative; /* 用于定位删除按钮和遮罩 */
+      }
+      .tile .image-holder {
+        width: 100%;
+        height: 300px; /* 图片容器固定高度 */
+        background-color: #eee;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden; /* 确保遮罩和图片在容器内 */
+        position: relative; /* 用于绝对定位图片和遮罩 */
+      }
+      .tile img.preview-image {
+        /* 原始图片预览 */
+        max-width: 100%;
+        max-height: 100%;
+        display: block;
+      }
+      .tile .crop-mask-overlay {
+        /* 裁剪区域预览遮罩 */
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none; /* 允许下方元素交互 */
+      }
+      .tile .filename {
+        font-size: 0.8em;
+        margin-top: 5px;
+        word-break: break-all;
+        text-align: center;
+      }
+      .tile .delete-btn {
+        position: absolute;
+        top: -5px;
+        right: -5px;
+        background: red;
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 20px;
+        height: 20px;
+        cursor: pointer;
+        font-size: 12px;
+        line-height: 20px;
+        text-align: center;
+        display: none; /* 初始隐藏，鼠标悬停显示 */
+      }
+      .tile:hover .delete-btn {
+        display: block;
+      }
+
+      .settings-group {
+        margin-bottom: 20px;
+        border: 1px solid #e0e0e0;
+        padding: 15px;
+        border-radius: 4px;
+      }
+      .settings-group h3 {
+        margin-top: 0;
+        font-size: 1.1em;
+        color: #333;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 8px;
+        margin-bottom: 12px;
+      }
+      .settings-group label,
+      .settings-group input,
+      .settings-group select,
+      .settings-group button {
+        display: block;
+        margin-bottom: 8px;
+        width: calc(100% - 16px);
+      }
+      .settings-group input[type="number"],
+      .settings-group input[type="text"] {
+        padding: 8px;
+        border: 1px solid #ccc;
+        border-radius: 3px;
+      }
+      .settings-group input[type="checkbox"] {
+        width: auto;
+        display: inline-block;
+        margin-right: 5px;
+        vertical-align: middle;
+      }
+      .settings-group .inline-half {
+        display: inline-block;
+        width: calc(50% - 12px);
+      }
+      .settings-group .action-buttons button {
+        background-color: #007bff;
+        color: white;
+        border: none;
+        padding: 10px;
+        cursor: pointer;
+        border-radius: 3px;
+      }
+      .settings-group .action-buttons button:hover {
+        background-color: #0056b3;
+      }
+      .settings-group .action-buttons button.secondary {
+        background-color: #6c757d;
+      }
+      .settings-group .action-buttons button.secondary:hover {
+        background-color: #545b62;
+      }
+      #log {
+        margin-top: auto;
+        font-size: 0.8em;
+        color: #555;
+        background: #f8f9fa;
+        padding: 8px;
+        border-radius: 3px;
+        max-height: 100px;
+        overflow-y: auto;
+      }
+      .tile .image-holder {
+        /* ... 保持之前的样式 ... */
+        position: relative; /* 确保子绝对定位元素正确对齐 */
+      }
+
+      .tile .preview-image {
+        /* 瓦片中的图片 */
+        /* ... 保持之前的样式 ... */
+        /* 不需要 pointer-events: none，因为拖动框在它上面 */
+      }
+
+      .tile .crop-mask-static-overlay {
+        /* 用于绘制smartcrop建议的静态遮罩 */
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none; /* 这个canvas不响应鼠标事件 */
+      }
+
+      .tile .draggable-crop-box {
+        /* 用户可交互的裁剪框 */
+        position: absolute;
+        border: 2px dashed rgba(255, 0, 0, 0.8); /* 鲜艳的虚线框 */
+        box-sizing: border-box; /* border 不增加元素的总宽高 */
+        cursor: move;
+        /* background-color: rgba(255, 255, 255, 0.1); 可选：轻微背景色 */
+      }
+      .tile .draggable-crop-box:hover {
+        background-color: rgba(255, 0, 0, 0.1); /* 悬停时轻微高亮 */
+      }
+
+      /* 为Loading状态添加一些基本样式 */
+      .tile .image-holder .loading-indicator {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background-color: rgba(0, 0, 0, 0.7);
+        color: white;
+        padding: 8px 15px;
+        border-radius: 5px;
+        font-size: 0.9em;
+        z-index: 10; /* 确保在图片之上 */
+        display: none; /* 初始隐藏 */
+      }
+      .tile .image-holder.is-loading .loading-indicator {
+        display: block; /* 加载时显示 */
+      }
+    </style>
+  </head>
+  <body>
+    <div class="main-content">
+      <div class="file-drop-area" id="fileDropArea">
+        <p>拖拽图片到这里，或点击选择文件</p>
+        <input
+          type="file"
+          id="fileInput"
+          multiple
+          accept="image/*"
+          style="display: none"
+        />
+      </div>
+      <div class="image-tiles-container" id="imageTilesContainer">
+        <!-- 图片瓦片将在这里动态添加 -->
+      </div>
+    </div>
+
+    <div class="sidebar">
+      <div class="settings-group">
+        <h3>调整大小 / 裁剪</h3>
+        <label for="maxOutputDimInput">最大单边约束 (px):</label>
+        <input type="number" id="maxOutputDimInput" value="1024" />
+        <!-- 更多如比例锁定、不缩放等选项可在此添加 -->
+      </div>
+
+      <div class="settings-group">
+        <h3>图像格式和质量</h3>
+        <label for="outputFormat">输出格式:</label>
+        <select id="outputFormat">
+          <option value="jpeg">JPEG</option>
+          <option value="png">PNG</option>
+          <option value="webp">WEBP</option>
+          <option value="preserve">保留原格式</option>
+        </select>
+        <label for="qualityJpeg">JPEG/WEBP 质量 (1-100):</label>
+        <input
+          type="number"
+          id="qualitySetting"
+          value="100"
+          min="1"
+          max="100"
+        />
+      </div>
+
+      <div class="settings-group action-buttons">
+        <h3>操作</h3>
+        <button id="saveAllAsZipButton">全部保存为 ZIP</button>
+        <button id="saveIndividualFilesButton">逐个保存文件</button>
+        <button id="removeAllButton" class="secondary">全部移除</button>
+      </div>
+      <div id="log">操作日志...</div>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.21.1/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/smartcrop@2.0.5/smartcrop.min.js"></script>
+    <!-- 如果需要打包ZIP，引入JSZip -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <!--
+        TODO: 为人物/性别检测引入相关库
+    -->
+
+    <script>
+      // --- 全局变量和DOM元素 ---
+      const fileDropArea = document.getElementById("fileDropArea");
+      const fileInput = document.getElementById("fileInput");
+      const imageTilesContainer = document.getElementById(
+        "imageTilesContainer"
+      );
+      const logElement = document.getElementById("log");
+
+      const outputFormatSelect = document.getElementById("outputFormat");
+      const qualitySettingInput = document.getElementById("qualitySetting");
+      const saveAllAsZipButton = document.getElementById("saveAllAsZipButton");
+      const saveIndividualFilesButton = document.getElementById(
+        "saveIndividualFilesButton"
+      );
+      const removeAllButton = document.getElementById("removeAllButton");
+
+      let imageFiles = []; // 存储已上传图片的信息和处理状态
+      let uniqueIdCounter = 0;
+      let MAX_OUTPUT_DIM = 1024; // 最终输出任意一边不得超过的值
+
+      // 如果你有一个输入框让用户设置它，例如 <input type="number" id="maxOutputDimInput" value="1024">
+      const maxOutputDimInput = document.getElementById("maxOutputDimInput");
+      if (maxOutputDimInput) {
+        MAX_OUTPUT_DIM = parseInt(maxOutputDimInput.value) || 1024;
+        maxOutputDimInput.addEventListener("change", () => {
+          MAX_OUTPUT_DIM = parseInt(maxOutputDimInput.value) || 1024;
+          log(`最大输出边长已更新为: ${MAX_OUTPUT_DIM}`);
+          // 当这个值改变时，你可能需要重新处理并更新所有图片的预览，
+          // 因为这会影响最终保存的图片尺寸，尽管它不直接影响 smartcrop 的分析过程。
+          // 不过，如果它间接影响了你对 analysisWidth/Height 的计算，那么就需要 updateAllPreviews()。
+          // 当前的 processAndSaveAll 会在保存时使用这个最新的值。
+        });
+      }
+
+      function log(message) {
+        console.log(message);
+        const timestamp = new Date().toLocaleTimeString();
+        logElement.innerHTML =
+          `[${timestamp}] ${message}<br>` + logElement.innerHTML;
+      }
+
+      // --- 文件处理和瓦片创建 ---
+      fileDropArea.addEventListener("click", () => fileInput.click());
+      fileInput.addEventListener("change", handleFiles);
+      ["dragenter", "dragover", "dragleave", "drop"].forEach((eventName) => {
+        fileDropArea.addEventListener(eventName, preventDefaults, false);
+        document.body.addEventListener(eventName, preventDefaults, false); // 防止浏览器默认打开图片
+      });
+      ["dragenter", "dragover"].forEach((eventName) => {
+        fileDropArea.addEventListener(
+          eventName,
+          () => fileDropArea.classList.add("dragover"),
+          false
+        );
+      });
+      ["dragleave", "drop"].forEach((eventName) => {
+        fileDropArea.addEventListener(
+          eventName,
+          () => fileDropArea.classList.remove("dragover"),
+          false
+        );
+      });
+      fileDropArea.addEventListener("drop", handleDrop, false);
+
+      function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+
+      function handleDrop(e) {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        handleFiles({ target: { files: files } });
+      }
+
+      function handleFiles(event) {
+        const files = event.target.files;
+        if (!files || files.length === 0) return;
+
+        // 为了给每个图片依次显示loading，我们串行处理 addFileToList
+        for (const file of Array.from(files)) {
+          if (!file.type.startsWith("image/")) {
+            log(`文件 "${file.name}" 不是图片，已跳过。`);
+            continue;
+          }
+          addFileToList(file); // 等待每个文件处理完成（包括API调用）
+        }
+        fileInput.value = "";
+      }
+
+      async function addFileToList(file) {
+        const reader = new FileReader();
+        const fileId = `file-${uniqueIdCounter++}`;
+
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onload = async () => {
+            const imageFileObject = {
+              id: fileId,
+              file: file,
+              name: file.name,
+              imgElement: img,
+              originalWidth: img.naturalWidth,
+              originalHeight: img.naturalHeight,
+              tileElement: null,
+              smartcropResult: null,
+              userDefinedCrop: null,
+              isUserInteracting: false,
+              previewStaticMaskCanvas: null,
+              draggableCropBoxElement: null,
+              loadingIndicatorElement: null, // 新增：Loading指示器元素引用
+            };
+            console.log("我是imageFileObject", imageFileObject);
+            imageFiles.push(imageFileObject);
+            createImageTile(imageFileObject);
+            await updateTilePreview(imageFileObject); // 初始预览和API调用
+            log(`图片 "${file.name}" 已添加并初步处理完成。`);
+          };
+          img.onerror = () => {
+            log(`加载图片 "${file.name}" 失败。`);
+          };
+          img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      }
+
+      function createImageTile(imageFileObj) {
+        const tile = document.createElement("div");
+        tile.className = "tile";
+        tile.id = imageFileObj.id;
+        imageFileObj.tileElement = tile;
+
+        const holder = document.createElement("div");
+        holder.className = "image-holder"; // 确保 holder 有 position: relative
+
+        const previewImg = imageFileObj.imgElement.cloneNode();
+        previewImg.className = "preview-image";
+        holder.appendChild(previewImg);
+
+        // 静态遮罩，显示 smartcrop 的建议
+        const staticMaskCanvas = document.createElement("canvas");
+        staticMaskCanvas.className = "crop-mask-static-overlay"; // CSS: position:absolute; pointer-events:none;
+        holder.appendChild(staticMaskCanvas);
+        imageFileObj.previewStaticMaskCanvas = staticMaskCanvas;
+
+        // 可拖动的裁剪框 (一个 div)
+        const draggableCropBox = document.createElement("div");
+        draggableCropBox.className = "draggable-crop-box";
+        // CSS: position:absolute; border: 2px dashed red; cursor: move;
+        // 初始时，它的尺寸和位置会根据 smartcrop 结果或默认设置
+        holder.appendChild(draggableCropBox);
+        imageFileObj.draggableCropBoxElement = draggableCropBox;
+
+        // --- 新增 Loading 指示器 ---
+        const loadingIndicator = document.createElement("div");
+        loadingIndicator.className = "loading-indicator";
+        loadingIndicator.textContent = "分析中...";
+        holder.appendChild(loadingIndicator);
+        imageFileObj.loadingIndicatorElement = loadingIndicator;
+        // --- Loading 指示器结束 ---
+
+        setTimeout(() => {
+          if (document.getElementById(imageFileObj.id)) {
+            // 再次确认元素存在
+            addDragFunctionality(imageFileObj);
+          }
+        }, 200);
+
+        const filenameP = document.createElement("p");
+        filenameP.className = "filename";
+        filenameP.textContent =
+          imageFileObj.name.length > 25
+            ? imageFileObj.name.substring(0, 22) + "..."
+            : imageFileObj.name;
+
+        const deleteBtn = document.createElement("button");
+        deleteBtn.className = "delete-btn";
+        deleteBtn.innerHTML = "×";
+        deleteBtn.onclick = () => removeImageFile(imageFileObj.id);
+
+        tile.appendChild(holder);
+        tile.appendChild(filenameP);
+        tile.appendChild(deleteBtn);
+        imageTilesContainer.appendChild(tile);
+      }
+
+      function removeImageFile(fileId) {
+        imageFiles = imageFiles.filter((f) => f.id !== fileId);
+        const tileElement = document.getElementById(fileId);
+        if (tileElement) {
+          imageTilesContainer.removeChild(tileElement);
+        }
+        log(`移除了 ID 为 ${fileId} 的图片。`);
+      }
+
+      removeAllButton.addEventListener("click", () => {
+        imageTilesContainer.innerHTML = ""; // 更快地清空DOM
+        imageFiles = [];
+        log("所有图片已移除。");
+      });
+
+      // --- 核心：调用后端API获取人物检测范围 ---
+      async function getBoostRegionsForFile(imageFileObj) {
+        const imageHolder =
+          imageFileObj.tileElement.querySelector(".image-holder");
+        const loadingIndicator = imageFileObj.loadingIndicatorElement;
+
+        if (imageHolder) imageHolder.classList.add("is-loading");
+
+        const formData = new FormData();
+        formData.append("image", imageFileObj.file); // imageFileObj.file 是原始 File 对象
+
+        try {
+          const response = await axios.post(
+            "http://localhost:5050/api/detect/person_regions",
+            formData,
+            {
+              headers: {
+                "Content-Type": "multipart/form-data",
+              },
+            }
+          );
+
+          if (
+            response.data &&
+            response.data.success &&
+            response.data.boost_regions &&
+            response.data.boost_regions.length > 0
+          ) {
+            log(
+              `API 为 "${imageFileObj.name}" 返回了 ${response.data.boost_regions.length} 个增强区域。`
+            );
+            return response.data.boost_regions;
+          } else if (response.data && response.data.success) {
+            // log(`API 成功处理 "${imageFileObj.name}" 但未检测到人物。`);
+            return null;
+          } else {
+            throw new Error(response.data.error || "API 返回未知错误。");
+          }
+        } catch (error) {
+          log(
+            `调用人物检测API时出错 ("${imageFileObj.name}"): ${
+              error.response ? error.response.data.error : error.message
+            }`
+          );
+          console.error("API 调用错误详情:", error);
+          return null;
+        } finally {
+          // 隐藏 Loading
+          if (imageHolder) imageHolder.classList.remove("is-loading");
+          // if (loadingIndicator) loadingIndicator.style.display = 'none'; // 或者通过 class 控制
+        }
+      }
+
+      function drawCropMaskOnTile(imageFileObj) {
+        const imgElementInTile =
+          imageFileObj.tileElement.querySelector(".preview-image");
+        const canvas = imageFileObj.previewCanvas;
+        const ctx = canvas.getContext("2d");
+
+        // 设置canvas尺寸与瓦片内图片容器尺寸一致
+        const holderRect = imageFileObj.tileElement
+          .querySelector(".image-holder")
+          .getBoundingClientRect();
+        canvas.width = holderRect.width;
+        canvas.height = holderRect.height;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height); // 清除旧遮罩
+
+        if (!imageFileObj.cropData || !imageFileObj.cropData.topCrop) {
+          // log(`文件 ${imageFileObj.name} 没有裁剪数据来绘制遮罩。`);
+          return;
+        }
+
+        const { topCrop } = imageFileObj.cropData;
+        const originalImgWidth = imageFileObj.originalWidth;
+        const originalImgHeight = imageFileObj.originalHeight;
+
+        // 计算图片在瓦片预览中实际显示的尺寸和缩放比例
+        // 这部分比较复杂，因为瓦片内的图片是等比缩放填充容器的
+        const tileImgContainerWidth = canvas.width;
+        const tileImgContainerHeight = canvas.height;
+
+        let displayWidth,
+          displayHeight,
+          offsetX = 0,
+          offsetY = 0;
+        const imgAspectRatio = originalImgWidth / originalImgHeight;
+        const containerAspectRatio =
+          tileImgContainerWidth / tileImgContainerHeight;
+
+        if (imgAspectRatio > containerAspectRatio) {
+          // 图片比容器宽 (以容器宽度为准)
+          displayWidth = tileImgContainerWidth;
+          displayHeight = displayWidth / imgAspectRatio;
+          offsetY = (tileImgContainerHeight - displayHeight) / 2;
+        } else {
+          // 图片比容器高或等宽高 (以容器高度为准)
+          displayHeight = tileImgContainerHeight;
+          displayWidth = displayHeight * imgAspectRatio;
+          offsetX = (tileImgContainerWidth - displayWidth) / 2;
+        }
+
+        const scaleToDisplay = displayWidth / originalImgWidth; // 原始图片到瓦片显示图片的缩放比例
+
+        // 将 topCrop (在原始图片坐标系中) 转换到瓦片预览canvas的坐标系
+        const cropRectX = topCrop.x * scaleToDisplay + offsetX;
+        const cropRectY = topCrop.y * scaleToDisplay + offsetY;
+        const cropRectWidth = topCrop.width * scaleToDisplay;
+        const cropRectHeight = topCrop.height * scaleToDisplay;
+
+        // 绘制半透明遮罩覆盖整个图片，然后清除裁剪区域
+        ctx.fillStyle = "rgba(0, 0, 0, 0.6)"; // 半透明黑色遮罩
+        ctx.fillRect(offsetX, offsetY, displayWidth, displayHeight); // 只在图片区域绘制遮罩
+        ctx.clearRect(cropRectX, cropRectY, cropRectWidth, cropRectHeight);
+
+        // 可选：绘制裁剪框的边框
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.7)"; // 白色边框
+        ctx.lineWidth = 1;
+        ctx.strokeRect(cropRectX, cropRectY, cropRectWidth, cropRectHeight);
+      }
+
+      // --- 保存逻辑 ---
+      saveAllAsZipButton.addEventListener("click", () =>
+        processAndSaveAll(true)
+      );
+      saveIndividualFilesButton.addEventListener("click", () =>
+        processAndSaveAll(false)
+      );
+
+      async function processAndSaveAll(asZip) {
+        if (imageFiles.length === 0) {
+          log("没有图片可供处理。");
+          return;
+        }
+        log(
+          `开始处理 ${imageFiles.length} 张图片... ${
+            asZip ? "打包为ZIP" : "逐个保存"
+          }`
+        );
+
+        const zip = asZip ? new JSZip() : null;
+        let filesProcessedCount = 0;
+
+        for (const imageFileObj of imageFiles) {
+          try {
+            let finalCropSource_original; // 这是我们从原图上截取的区域 {x,y,width,height}
+
+            if (imageFileObj.userDefinedCrop) {
+              finalCropSource_original = imageFileObj.userDefinedCrop;
+              log(`"${imageFileObj.name}": 使用用户定义的裁剪区域进行保存。`);
+            } else if (
+              imageFileObj.smartcropResult &&
+              imageFileObj.smartcropResult.topCrop
+            ) {
+              finalCropSource_original = imageFileObj.smartcropResult.topCrop;
+              log(
+                `"${imageFileObj.name}": 使用 smartcrop 优化后的区域进行保存。`
+              );
+            } else {
+              // 如果都没有（例如，图片刚加载，smartcrop还没运行或失败，用户也没动过）
+              // 这种情况下，最安全的做法是使用原始图片的完整区域，或者一个基于原始图片中心的、尽可能大的区域。
+              // 为了保证有东西输出，我们这里选择原始图片的完整区域，后续的缩放会处理尺寸问题。
+              log(
+                `"${imageFileObj.name}": 无有效用户定义或smartcrop结果，将尝试使用原图区域。`
+              );
+              finalCropSource_original = {
+                x: 0,
+                y: 0,
+                width: imageFileObj.originalWidth,
+                height: imageFileObj.originalHeight,
+              };
+            }
+
+            // 确保 finalCropSource_original 有效，并且宽高至少为1
+            if (
+              !finalCropSource_original ||
+              finalCropSource_original.width < 1 ||
+              finalCropSource_original.height < 1
+            ) {
+              log(`跳过 "${imageFileObj.name}"，无效的裁剪源数据。`);
+              continue;
+            }
+
+            // ---- 计算最终输出的画布尺寸，满足 MAX_OUTPUT_DIM 约束 ----
+            let outputWidth = finalCropSource_original.width;
+            let outputHeight = finalCropSource_original.height;
+
+            if (outputWidth > MAX_OUTPUT_DIM || outputHeight > MAX_OUTPUT_DIM) {
+              const aspectRatio = outputWidth / outputHeight;
+              if (outputWidth > outputHeight) {
+                // 宽图，或方图以宽为准
+                outputWidth = MAX_OUTPUT_DIM;
+                outputHeight = Math.round(outputWidth / aspectRatio);
+              } else {
+                // 高图，以高为准
+                outputHeight = MAX_OUTPUT_DIM;
+                outputWidth = Math.round(outputHeight * aspectRatio);
+              }
+            }
+            // 再次确保宽高至少为1，防止计算结果为0
+            outputWidth = Math.max(1, outputWidth);
+            outputHeight = Math.max(1, outputHeight);
+
+            // ---- 创建临时Canvas并绘制 ----
+            const tempCanvas = document.createElement("canvas");
+            tempCanvas.width = outputWidth;
+            tempCanvas.height = outputHeight;
+            const ctx = tempCanvas.getContext("2d");
+            ctx.imageSmoothingEnabled = true; // 默认开启平滑
+            ctx.imageSmoothingQuality = "high"; // 尝试更高质量的平滑
+
+            // 从原始图片中绘制 finalCropSource_original 区域到 tempCanvas，并缩放到 outputWidth x outputHeight
+            ctx.drawImage(
+              imageFileObj.imgElement, // 源图像
+              finalCropSource_original.x, // 源图像裁剪区域的 x
+              finalCropSource_original.y, // 源图像裁剪区域的 y
+              finalCropSource_original.width, // 源图像裁剪区域的宽度
+              finalCropSource_original.height, // 源图像裁剪区域的高度
+              0,
+              0, // 在目标 canvas 上绘制的 x, y (左上角)
+              outputWidth, // 在目标 canvas 上绘制的宽度
+              outputHeight // 在目标 canvas 上绘制的高度
+            );
+
+            // ---- 获取 Blob 并保存 ----
+            const format = getOutputFormat(imageFileObj.name); // 你已有的辅助函数
+            const quality =
+              format.mime === "image/jpeg" || format.mime === "image/webp"
+                ? parseInt(qualitySettingInput.value) / 100
+                : 1; // PNG 的 quality 参数在 toBlob 中通常无效或表现不同
+
+            const blob = await new Promise((resolve, reject) => {
+              tempCanvas.toBlob(
+                (blob) => {
+                  if (blob) {
+                    resolve(blob);
+                  } else {
+                    reject(
+                      new Error(`Canvas toBlob failed for ${imageFileObj.name}`)
+                    );
+                  }
+                },
+                format.mime,
+                quality
+              );
+            });
+
+            const outputFilename = `${getFilenameWithoutExtension(
+              imageFileObj.name
+            )}-${outputWidth}x${outputHeight}.${format.ext}`;
+
+            if (asZip && zip) {
+              // 确保 zip 对象存在
+              zip.file(outputFilename, blob);
+              // log(`"${outputFilename}" 已添加到ZIP。`); // 可以减少日志输出
+            } else {
+              saveAs(blob, outputFilename); // 你已有的辅助函数
+              // log(`"${outputFilename}" 已开始下载。`); // 可以减少日志输出
+              await new Promise((r) => setTimeout(r, 100)); // 给浏览器一点喘息时间处理多个下载
+            }
+            filesProcessedCount++;
+          } catch (error) {
+            log(`处理或保存 "${imageFileObj.name}" 出错: ${error.message}`);
+            console.error(`Error processing ${imageFileObj.name}:`, error);
+          }
+        } // end of for loop
+
+        if (asZip && zip && filesProcessedCount > 0) {
+          log("正在生成ZIP文件...");
+          try {
+            const content = await zip.generateAsync({ type: "blob" });
+            saveAs(content, `cropped-images-${Date.now()}.zip`);
+            log("ZIP文件已生成并开始下载。");
+          } catch (err) {
+            log(`生成ZIP失败: ${err.message}`);
+            console.error("ZIP generation error:", err);
+          }
+        } else if (!asZip && filesProcessedCount > 0) {
+          log(`${filesProcessedCount} 张图片处理完成并开始单独下载。`);
+        } else if (filesProcessedCount === 0 && imageFiles.length > 0) {
+          log("没有文件被成功处理。请检查之前的日志获取更多信息。");
+        } else if (imageFiles.length === 0 && !asZip) {
+          // 修复：如果一开始就没有文件，但点了逐个保存
+          // log('没有图片可供处理。'); // 这条日志在函数开头已存在
+        }
+      }
+      function getOutputFormat(originalFilename) {
+        const selectedFormat = outputFormatSelect.value;
+        const originalExt = originalFilename
+          .slice(originalFilename.lastIndexOf(".") + 1)
+          .toLowerCase();
+
+        if (selectedFormat === "preserve") {
+          if (["jpg", "jpeg"].includes(originalExt))
+            return { mime: "image/jpeg", ext: "jpg" };
+          if (originalExt === "png") return { mime: "image/png", ext: "png" };
+          if (originalExt === "webp")
+            return { mime: "image/webp", ext: "webp" };
+          return { mime: "image/jpeg", ext: "jpg" }; // 默认回退到JPEG
+        }
+        if (selectedFormat === "jpeg")
+          return { mime: "image/jpeg", ext: "jpg" };
+        if (selectedFormat === "png") return { mime: "image/png", ext: "png" };
+        if (selectedFormat === "webp")
+          return { mime: "image/webp", ext: "webp" };
+        return { mime: "image/jpeg", ext: "jpg" }; // 默认
+      }
+
+      function getFilenameWithoutExtension(filename) {
+        return filename.substring(0, filename.lastIndexOf(".")) || filename;
+      }
+
+      // --- 辅助函数 saveAs (简易版，生产环境建议用 FileSaver.js) ---
+      function saveAs(blob, filename) {
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
+      }
+
+      // **拖动逻辑实现**
+      function addDragFunctionality(imageFileObj) {
+        const draggableBox = imageFileObj.draggableCropBoxElement;
+        const imageHolder =
+          imageFileObj.tileElement.querySelector(".image-holder"); // 图片预览的直接父容器
+        const staticCanvas = imageFileObj.previewStaticMaskCanvas;
+        const staticCtx = staticCanvas.getContext("2d");
+
+        let startMouseX, startMouseY; // 鼠标按下时的客户端坐标
+        let initialBoxX_style, initialBoxY_style; // 拖动开始时，可拖动框的 style.left/top (去掉 'px')
+
+        draggableBox.onmousedown = function (e) {
+          e.preventDefault(); // 防止默认的拖动行为（例如拖动图片）
+          e.stopPropagation(); // 阻止事件冒泡
+
+          imageFileObj.isUserInteracting = true; // 标记用户开始交互
+
+          startMouseX = e.clientX;
+          startMouseY = e.clientY;
+          initialBoxX_style = parseFloat(draggableBox.style.left || 0); // 获取数值部分
+          initialBoxY_style = parseFloat(draggableBox.style.top || 0);
+
+          // 确保静态画布尺寸在拖动开始时是正确的 (通常在 updateTilePreview 中已设置)
+          if (
+            staticCanvas.width !== imageHolder.clientWidth ||
+            staticCanvas.height !== imageHolder.clientHeight
+          ) {
+            staticCanvas.width = imageHolder.clientWidth;
+            staticCanvas.height = imageHolder.clientHeight;
+          }
+
+          document.addEventListener("mousemove", onMouseMoveWhileDragging);
+          document.addEventListener("mouseup", onMouseUpAfterDragging);
+        };
+
+        function onMouseMoveWhileDragging(e) {
+          e.preventDefault();
+
+          const deltaMouseX = e.clientX - startMouseX;
+          const deltaMouseY = e.clientY - startMouseY;
+
+          let newBoxLeft_style = initialBoxX_style + deltaMouseX;
+          let newBoxTop_style = initialBoxY_style + deltaMouseY;
+
+          // 获取图片在瓦片中实际渲染的尺寸和偏移
+          const {
+            displayWidth: imgActualDisplayWidth,
+            displayHeight: imgActualDisplayHeight,
+            offsetX: imgRenderOffsetX_inHolder, // 图片相对于 imageHolder 左上角的 X 偏移
+            offsetY: imgRenderOffsetY_inHolder, // 图片相对于 imageHolder 左上角的 Y 偏移
+          } = getDisplayedImageDimensions(imageFileObj, imageHolder);
+
+          // 限制拖动框的移动范围，确保它不会完全移出实际渲染的图片区域
+          // newBoxLeft_style 是相对于 imageHolder 的
+          newBoxLeft_style = Math.max(
+            imgRenderOffsetX_inHolder, // 左边界
+            Math.min(
+              newBoxLeft_style,
+              imgRenderOffsetX_inHolder +
+                imgActualDisplayWidth -
+                draggableBox.offsetWidth
+            ) // 右边界
+          );
+          newBoxTop_style = Math.max(
+            imgRenderOffsetY_inHolder, // 上边界
+            Math.min(
+              newBoxTop_style,
+              imgRenderOffsetY_inHolder +
+                imgActualDisplayHeight -
+                draggableBox.offsetHeight
+            ) // 下边界
+          );
+
+          // 1. 更新可拖动红框的位置
+          draggableBox.style.left = newBoxLeft_style + "px";
+          draggableBox.style.top = newBoxTop_style + "px";
+
+          // 2. 实时重绘静态遮罩以同步透明区域
+          staticCtx.clearRect(0, 0, staticCanvas.width, staticCanvas.height); // 清除整个静态画布
+
+          // 重新绘制覆盖整个图片显示区域的半透明层
+          staticCtx.fillStyle = "rgba(0, 0, 0, 0.6)";
+          staticCtx.fillRect(
+            imgRenderOffsetX_inHolder,
+            imgRenderOffsetY_inHolder,
+            imgActualDisplayWidth,
+            imgActualDisplayHeight
+          );
+
+          // 清除可拖动框当前对应的区域 (使用更新后的 style 值)
+          staticCtx.clearRect(
+            newBoxLeft_style,
+            newBoxTop_style,
+            draggableBox.offsetWidth,
+            draggableBox.offsetHeight
+          );
+        }
+
+        function onMouseUpAfterDragging(e) {
+          imageFileObj.isUserInteracting = false; // 标记交互结束
+
+          document.removeEventListener("mousemove", onMouseMoveWhileDragging);
+          document.removeEventListener("mouseup", onMouseUpAfterDragging);
+
+          // 将拖动后的位置（在瓦片预览坐标系）转换回原始图片的坐标系，并存储
+          updateUserDefinedCropFromDraggableBox(imageFileObj);
+
+          log(`"${imageFileObj.name}" 裁剪区域已手动调整。`);
+          // 可选：拖动结束后，可以调用一次 updateTilePreview 来确保所有状态（包括 smartcropResult 可能的更新）
+          // 但如果只是为了更新遮罩，onMouseMove 已经做了。如果需要重新计算 smartcrop，则需要。
+          // 为了保持拖动后的用户选择，通常不应在此时强制覆盖 userDefinedCrop。
+        }
+      }
+      function getDisplayedImageDimensions(imageFileObj, imageHolderElement) {
+        const originalImgWidth = imageFileObj.originalWidth;
+        const originalImgHeight = imageFileObj.originalHeight;
+        // 使用 clientWidth/Height 获取元素在屏幕上的实际渲染尺寸
+        const containerWidth = imageHolderElement.clientWidth;
+        const containerHeight = imageHolderElement.clientHeight;
+
+        let displayWidth,
+          displayHeight,
+          offsetX = 0,
+          offsetY = 0;
+        const imgAspectRatio = originalImgWidth / originalImgHeight;
+        const containerAspectRatio = containerWidth / containerHeight;
+
+        if (imgAspectRatio > containerAspectRatio) {
+          // 图片比容器宽 (以容器宽度为准，高度按比例缩放)
+          displayWidth = containerWidth;
+          displayHeight = displayWidth / imgAspectRatio;
+          offsetY = (containerHeight - displayHeight) / 2; // 垂直居中
+        } else {
+          // 图片比容器高或等宽高 (以容器高度为准，宽度按比例缩放)
+          displayHeight = containerHeight;
+          displayWidth = displayHeight * imgAspectRatio;
+          offsetX = (containerWidth - displayWidth) / 2; // 水平居中
+        }
+
+        const scaleToDisplay =
+          displayWidth > 0 && originalImgWidth > 0
+            ? displayWidth / originalImgWidth
+            : 1; // 避免除以0
+
+        return {
+          displayWidth: Math.round(displayWidth),
+          displayHeight: Math.round(displayHeight),
+          offsetX: Math.round(offsetX), // 图片相对于 imageHolder 左上角的 X 偏移
+          offsetY: Math.round(offsetY), // 图片相对于 imageHolder 左上角的 Y 偏移
+          scaleToDisplay: scaleToDisplay,
+        };
+      }
+      function updateUserDefinedCropFromDraggableBox(imageFileObj) {
+        const draggableBox = imageFileObj.draggableCropBoxElement;
+        const imageHolder =
+          imageFileObj.tileElement.querySelector(".image-holder");
+
+        const {
+          scaleToDisplay,
+          offsetX: imgRenderOffsetX_inHolder,
+          offsetY: imgRenderOffsetY_inHolder,
+        } = getDisplayedImageDimensions(imageFileObj, imageHolder);
+
+        if (scaleToDisplay === 0 || !isFinite(scaleToDisplay)) {
+          log(
+            `警告: ${imageFileObj.name} 的缩放比例无效 (${scaleToDisplay})，无法更新用户裁剪。`
+          );
+          // 可以考虑将 userDefinedCrop 设为 null 或进行其他错误处理
+          imageFileObj.userDefinedCrop = null;
+          return;
+        }
+
+        // draggableBox 的 offsetLeft/Top 是相对于其 offsetParent (即 imageHolder) 的
+        // 我们需要减去图片在 holder 内的渲染偏移，然后除以缩放比例，得到原始图片坐标
+        const cropX_original =
+          (draggableBox.offsetLeft - imgRenderOffsetX_inHolder) /
+          scaleToDisplay;
+        const cropY_original =
+          (draggableBox.offsetTop - imgRenderOffsetY_inHolder) / scaleToDisplay;
+        const cropWidth_original = draggableBox.offsetWidth / scaleToDisplay;
+        const cropHeight_original = draggableBox.offsetHeight / scaleToDisplay;
+
+        imageFileObj.userDefinedCrop = {
+          x: Math.round(cropX_original),
+          y: Math.round(cropY_original),
+          width: Math.round(Math.max(1, cropWidth_original)), // 确保宽高至少为1
+          height: Math.round(Math.max(1, cropHeight_original)),
+        };
+        // console.log(`用户定义裁剪 (原始图片坐标): ${JSON.stringify(imageFileObj.userDefinedCrop)} for ${imageFileObj.name}`);
+      }
+      async function updateTilePreview(imageFileObj) {
+        if (!imageFileObj || !imageFileObj.imgElement) {
+          return;
+        }
+        if (imageFileObj.isUserInteracting) return; // 用户正在拖动，不打断
+
+        // const start = performance.now(); // 可用于调试性能
+        const imageHolder =
+          imageFileObj.tileElement.querySelector(".image-holder");
+
+        let finalCropSource_original; // 最终用于定位和确定尺寸的裁剪源 {x,y,width,height} (原始图片坐标)
+        
+        /* 角色信息/原图 占比 阈值 80% —— 高于这个值直接使用API结果，低于这个值 使用API作为boost指导smartcrop  */
+        const DIRECT_USE_THRESHOLD_PERCENTAGE = 0.7;
+
+        {
+          // --- 用户未自定义，执行自动逻辑 ---
+          const boostRegionsFromAPI = await getBoostRegionsForFile(
+            imageFileObj
+          );
+
+          if (boostRegionsFromAPI && boostRegionsFromAPI.length > 0) {
+            const mainRoleRegion = boostRegionsFromAPI[0];
+            const roleRegionArea = mainRoleRegion.width * mainRoleRegion.height;
+            const originalImageArea =
+              imageFileObj.originalWidth * imageFileObj.originalHeight;
+            const coveragePercentage =
+              originalImageArea > 0 ? roleRegionArea / originalImageArea : 0;
+            console.log(coveragePercentage, roleRegionArea, originalImageArea);
+            // log(`"${imageFileObj.name}": API检测到角色区域覆盖原图 ${(coveragePercentage * 100).toFixed(1)}%`);
+
+            if (coveragePercentage >= DIRECT_USE_THRESHOLD_PERCENTAGE) {
+              // --- 逻辑2: API 调用且占比高于等于80%，直接使用API结果 ---
+              log(
+                `"${imageFileObj.name}": 角色区域占比高 (${(
+                  coveragePercentage * 100
+                ).toFixed(1)}%), 直接使用API检测范围。`
+              );
+              finalCropSource_original = {
+                // 创建副本
+                x: mainRoleRegion.x,
+                y: mainRoleRegion.y,
+                width: mainRoleRegion.width,
+                height: mainRoleRegion.height,
+              };
+              imageFileObj.smartcropResult = null; // 清除旧的smartcropResult，因为我们跳过了它
+            } else {
+              // --- 逻辑3: API 调用且占比低于80%，使用API作为boost指导smartcrop ---
+              log(
+                `"${imageFileObj.name}": 角色区域占比较低，使用API区域作为boost指导smartcrop。`
+              );
+              const expansionFactor = 1.1; // 扩展因子，让smartcrop在角色区域周边探索
+              let analysisWidth = Math.min(
+                imageFileObj.originalWidth,
+                Math.round(mainRoleRegion.width * expansionFactor)
+              );
+              let analysisHeight = Math.min(
+                imageFileObj.originalHeight,
+                Math.round(mainRoleRegion.height * expansionFactor)
+              );
+              // 可选：调整 analysisHeight 以匹配某个目标宽高比
+              // const targetAnalysisAspectRatio = 1.2;
+              // analysisHeight = Math.round(analysisWidth / targetAnalysisAspectRatio);
+              // analysisHeight = Math.max(analysisHeight, mainRoleRegion.height);
+
+              const options = {
+                width: analysisWidth,
+                height: analysisHeight,
+                minScale: 0.5, // 示例 minScale，允许 smartcrop 进行一些优化
+                boost: [boostRegionsFromAPI[0]],
+              };
+              try {
+                const result = await smartcrop.crop(
+                  imageFileObj.imgElement,
+                  options
+                );
+
+                console.log(" 逻辑3: API 调用且占比低于80%，使用API作为boost指导smartcrop ",options,result);
+
+                imageFileObj.smartcropResult = {
+                  topCrop: result.topCrop,
+                  optionsUsed: options,
+                  fullResult: result,
+                };
+                finalCropSource_original = result.topCrop;
+              } catch (error) {
+                log(
+                  `Smartcrop 处理 "${imageFileObj.name}" (有boost) 出错: ${error.message}`
+                );
+                // 出错回退：尝试使用API原始区域
+                finalCropSource_original = mainRoleRegion;
+              }
+            }
+          } else {
+            // --- 逻辑1: 没有从API获取到 boost 区域，则用smartcrop作为最终决策 (全局分析) ---
+            log(
+              `"${imageFileObj.name}": 未从API获取角色区域，进行全局smartcrop分析。`
+            );
+            // 使用一个合理的分析尺寸，例如基于MAX_OUTPUT_DIM或原图尺寸的某个比例
+            const maxDimForGlobalAnalysis =
+              parseInt(maxOutputDimInput.value) || 1024; // 或者其他默认值
+
+            const options = {
+              width: maxDimForGlobalAnalysis,
+              height: maxDimForGlobalAnalysis,
+              minScale: 1, // 全局分析时，minScale可以更灵活
+            };
+            try {
+              const result = await smartcrop.crop(
+                imageFileObj.imgElement,
+                options
+              );
+              console.log(" 逻辑1: 没有从API获取到 boost 区域，则用smartcrop作为最终决策 (全局分析)",options,result);
+              imageFileObj.smartcropResult = {
+                topCrop: result.topCrop,
+                optionsUsed: options,
+                fullResult: result,
+              };
+              finalCropSource_original = result.topCrop;
+            } catch (error) {
+              log(
+                `Smartcrop 处理 "${imageFileObj.name}" (全局) 出错: ${error.message}`
+              );
+              // 最终极回退：使用全图
+              finalCropSource_original = {
+                x: 0,
+                y: 0,
+                width: imageFileObj.originalWidth,
+                height: imageFileObj.originalHeight,
+              };
+            }
+          }
+        } // --- 用户未自定义逻辑结束 ---
+
+        if (!finalCropSource_original) {
+          log(
+            `关键错误: 无法为 "${imageFileObj.name}" 确定最终裁剪源。将使用全图。`
+          );
+          finalCropSource_original = {
+            x: 0,
+            y: 0,
+            width: imageFileObj.originalWidth,
+            height: imageFileObj.originalHeight,
+          };
+        }
+
+        // 确保 finalCropSource_original 尺寸有效
+        const cropBoxWidth_original = Math.max(
+          1,
+          Math.round(finalCropSource_original.width)
+        );
+        const cropBoxHeight_original = Math.max(
+          1,
+          Math.round(finalCropSource_original.height)
+        );
+
+        // --- 更新可拖动框 (draggableCropBoxElement) 的位置和尺寸 ---
+        const draggableBox = imageFileObj.draggableCropBoxElement;
+        const {
+          offsetX: imgRenderOffsetX_inHolder,
+          offsetY: imgRenderOffsetY_inHolder,
+          scaleToDisplay,
+        } = getDisplayedImageDimensions(imageFileObj, imageHolder);
+
+        const boxWidth_style = cropBoxWidth_original * scaleToDisplay;
+        const boxHeight_style = cropBoxHeight_original * scaleToDisplay;
+
+        const sourceCenterX_original =
+          finalCropSource_original.x + cropBoxWidth_original / 2; // 使用最终确定的框的宽高来计算中心
+        const sourceCenterY_original =
+          finalCropSource_original.y + cropBoxHeight_original / 2;
+        let boxLeft_style =
+          sourceCenterX_original * scaleToDisplay +
+          imgRenderOffsetX_inHolder -
+          boxWidth_style / 2;
+        let boxTop_style =
+          sourceCenterY_original * scaleToDisplay +
+          imgRenderOffsetY_inHolder -
+          boxHeight_style / 2;
+
+        const {
+          displayWidth: imgActualDisplayWidth,
+          displayHeight: imgActualDisplayHeight,
+        } = getDisplayedImageDimensions(imageFileObj, imageHolder);
+        const constrainedBoxWidth_style = Math.min(
+          boxWidth_style,
+          imgActualDisplayWidth
+        );
+        const constrainedBoxHeight_style = Math.min(
+          boxHeight_style,
+          imgActualDisplayHeight
+        );
+
+        boxLeft_style = Math.max(
+          imgRenderOffsetX_inHolder,
+          Math.min(
+            boxLeft_style,
+            imgRenderOffsetX_inHolder +
+              imgActualDisplayWidth -
+              constrainedBoxWidth_style
+          )
+        );
+        boxTop_style = Math.max(
+          imgRenderOffsetY_inHolder,
+          Math.min(
+            boxTop_style,
+            imgRenderOffsetY_inHolder +
+              imgActualDisplayHeight -
+              constrainedBoxHeight_style
+          )
+        );
+
+        draggableBox.style.left = boxLeft_style + "px";
+        draggableBox.style.top = boxTop_style + "px";
+        draggableBox.style.width = constrainedBoxWidth_style + "px";
+        draggableBox.style.height = constrainedBoxHeight_style + "px";
+
+        // --- 绘制静态遮罩 (previewStaticMaskCanvas) ---
+        const staticCtx = imageFileObj.previewStaticMaskCanvas.getContext("2d");
+        const staticCanvas = imageFileObj.previewStaticMaskCanvas;
+
+        if (
+          staticCanvas.width !== imageHolder.clientWidth ||
+          staticCanvas.height !== imageHolder.clientHeight
+        ) {
+          staticCanvas.width = imageHolder.clientWidth;
+          staticCanvas.height = imageHolder.clientHeight;
+        }
+        staticCtx.clearRect(0, 0, staticCanvas.width, staticCanvas.height);
+        staticCtx.fillStyle = "rgba(0, 0, 0, 0.6)";
+        staticCtx.fillRect(
+          imgRenderOffsetX_inHolder,
+          imgRenderOffsetY_inHolder,
+          imgActualDisplayWidth,
+          imgActualDisplayHeight
+        );
+        staticCtx.clearRect(
+          boxLeft_style,
+          boxTop_style,
+          constrainedBoxWidth_style,
+          constrainedBoxHeight_style
+        );
+
+        // const end = performance.now();
+        // console.log(`updateTilePreview 执行时间: ${(end - start).toFixed(2)} 毫秒 for ${imageFileObj.name}`);
+      } // 在 updateAllPreviews 中调用 updateTilePreview
+      function updateAllPreviews() {
+        log(`全局设置已更改，正在更新所有 ${imageFiles.length} 个预览...`);
+        imageFiles.forEach((imgFile) => {
+          if (!imgFile.isUserInteracting) {
+            // 如果用户当前没有在操作这个瓦片，才更新
+            updateTilePreview(imgFile);
+          }
+        });
+      }
+
+      log("初始化完成。请上传图片。");
+    </script>
+  </body>
+</html>
