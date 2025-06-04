@@ -2,7 +2,7 @@
 
 本项目旨在提供一个便捷的Web界面工具，用于批量智能裁剪图片，以便生成适用于训练LoRA（Low-Rank Adaptation）模型的高质量数据集。它结合了可选的后端人物检测API和前端的 `smartcrop.js` 库，实现对图片中**人物核心区域的精确识别和智能构图优化**，并能**自适应处理图片分辨率**，确保输出符合特定尺寸约束（如任意一边不超过1024像素，且此约束可动态调整）。
 
-[例如: ![工具界面截图](https://csv-cdn-1314342128.cos.ap-guangzhou.myqcloud.com/lora_image_processor_project.PNG)]
+(https://csv-cdn-1314342128.cos.ap-guangzhou.myqcloud.com/lora_image_processor_project.PNG)
 
 ## ✨ 主要功能与核心优势 (相较于通用工具如 Birme.net)
 
