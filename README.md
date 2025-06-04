@@ -37,16 +37,15 @@
 
 *   在本地直接用浏览器打开 `Index.html` 文件运行。
 
-### 2. 后端API (可选，用于人物检测)
+### 2. 后端API 
 
 *   如果你希望使用人物检测功能来指导 `smartcrop.js`：
     *   你需要一个后端服务，该服务接收图片上传，使用如 `imgutils` (YOLOv8) 或其他检测模型进行人物检测，并返回边界框坐标。
-    *   示例的Python Flask后端代码已包含在讨论中，你可以基于它进行构建或使用你自己的实现。
-    *   **确保在前端JavaScript代码的 `getBoostRegionsForFile` 函数中，API的URL (`axios.post('YOUR_BACKEND_API_URL', ...`) 指向你部署的后端服务地址。**
 
 ### 3. 基本使用流程
 
-1.  打开部署好的 `Index.html` 页面。
+0.  运行api_server下的的app.py
+1.  运行web_ui下的 `Index.html` 页面。
 2.  通过拖拽或点击上传区域选择一批图片。
 3.  图片将以瓦片形式显示，并自动应用初始的智能裁剪预览。
 4.  点击并拖动每个图片瓦片上的红色虚线框，手动微调裁剪区域。
