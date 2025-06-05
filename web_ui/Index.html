@@ -3,9 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>批量智能裁剪 (Birme 风格演示)</title>
+    <title>批量智能裁剪</title>
     <style>
       body {
+        -webkit-user-select: none;
+        user-select: none;
         font-family: sans-serif;
         margin: 0;
         display: flex;
@@ -20,7 +22,7 @@
         overflow-y: auto;
       }
       .sidebar {
-        width: 320px;
+        width: 400px;
         background-color: #ffffff;
         padding: 20px;
         box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
@@ -48,7 +50,7 @@
         justify-content: flex-start;
       }
       .tile {
-        width: 360px; /* 瓦片宽度 */
+        width: 320px; /* 瓦片宽度 */
         border: 1px solid #ddd;
         background-color: #fff;
         padding: 8px;
@@ -57,7 +59,6 @@
       }
       .tile .image-holder {
         width: 100%;
-        height: 300px; /* 图片容器固定高度 */
         background-color: #eee;
         display: flex;
         align-items: center;
@@ -372,6 +373,7 @@
       </div>
       <div id="log">操作日志...</div>
     </div>
+    <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.21.1/axios.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/smartcrop@2.0.5/smartcrop.min.js"></script>
     <!-- 如果需要打包ZIP，引入JSZip -->
@@ -402,17 +404,12 @@
       var MAX_OUTPUT_DIM = 1024; // 最终输出任意一边不得超过的值
       var DIRECT_USE_THRESHOLD_PERCENTAGE = 0.7;
 
-      // 如果你有一个输入框让用户设置它，例如 <input type="number" id="maxOutputDimInput" value="1024">
       const maxOutputDimInput = document.getElementById("maxOutputDimInput");
       if (maxOutputDimInput) {
         MAX_OUTPUT_DIM = parseInt(maxOutputDimInput.value) || 1024;
         maxOutputDimInput.addEventListener("change", () => {
           MAX_OUTPUT_DIM = parseInt(maxOutputDimInput.value) || 1024;
           log(`最大输出边长已更新为: ${MAX_OUTPUT_DIM}`);
-          // 当这个值改变时，你可能需要重新处理并更新所有图片的预览，
-          // 因为这会影响最终保存的图片尺寸，尽管它不直接影响 smartcrop 的分析过程。
-          // 不过，如果它间接影响了你对 analysisWidth/Height 的计算，那么就需要 updateAllPreviews()。
-          // 当前的 processAndSaveAll 会在保存时使用这个最新的值。
         });
       }
 
@@ -808,7 +805,7 @@
             );
 
             // ---- 获取 Blob 并保存 ----
-            const format = getOutputFormat(imageFileObj.name); // 你已有的辅助函数
+            const format = getOutputFormat(imageFileObj.name);
             const quality =
               format.mime === "image/jpeg" || format.mime === "image/webp"
                 ? parseInt(qualitySettingInput.value) / 100
@@ -839,7 +836,7 @@
               zip.file(outputFilename, blob);
               // log(`"${outputFilename}" 已添加到ZIP。`); // 可以减少日志输出
             } else {
-              saveAs(blob, outputFilename); // 你已有的辅助函数
+              saveAs(blob, outputFilename); 
               // log(`"${outputFilename}" 已开始下载。`); // 可以减少日志输出
               await new Promise((r) => setTimeout(r, 100)); // 给浏览器一点喘息时间处理多个下载
             }
@@ -906,118 +903,152 @@
         URL.revokeObjectURL(link.href);
       }
 
-      // **拖动逻辑实现**
-      function addDragFunctionality(imageFileObj) {
+      // 新增一个辅助函数来重绘静态遮罩
+      function redrawStaticMaskAfterInteraction(imageFileObj) {
         const draggableBox = imageFileObj.draggableCropBoxElement;
         const imageHolder =
-          imageFileObj.tileElement.querySelector(".image-holder"); // 图片预览的直接父容器
+          imageFileObj.tileElement.querySelector(".image-holder");
         const staticCanvas = imageFileObj.previewStaticMaskCanvas;
         const staticCtx = staticCanvas.getContext("2d");
 
-        let startMouseX, startMouseY; // 鼠标按下时的客户端坐标
-        let initialBoxX_style, initialBoxY_style; // 拖动开始时，可拖动框的 style.left/top (去掉 'px')
+        const {
+          displayWidth: imgActualDisplayWidth,
+          displayHeight: imgActualDisplayHeight,
+          offsetX: imgRenderOffsetX_inHolder,
+          offsetY: imgRenderOffsetY_inHolder,
+        } = getDisplayedImageDimensions(imageFileObj, imageHolder);
 
-        draggableBox.onmousedown = function (e) {
-          e.preventDefault(); // 防止默认的拖动行为（例如拖动图片）
-          e.stopPropagation(); // 阻止事件冒泡
-
-          imageFileObj.isUserInteracting = true; // 标记用户开始交互
-
-          startMouseX = e.clientX;
-          startMouseY = e.clientY;
-          initialBoxX_style = parseFloat(draggableBox.style.left || 0); // 获取数值部分
-          initialBoxY_style = parseFloat(draggableBox.style.top || 0);
-
-          // 确保静态画布尺寸在拖动开始时是正确的 (通常在 updateTilePreview 中已设置)
-          if (
-            staticCanvas.width !== imageHolder.clientWidth ||
-            staticCanvas.height !== imageHolder.clientHeight
-          ) {
-            staticCanvas.width = imageHolder.clientWidth;
-            staticCanvas.height = imageHolder.clientHeight;
-          }
-
-          document.addEventListener("mousemove", onMouseMoveWhileDragging);
-          document.addEventListener("mouseup", onMouseUpAfterDragging);
-        };
-
-        function onMouseMoveWhileDragging(e) {
-          e.preventDefault();
-
-          const deltaMouseX = e.clientX - startMouseX;
-          const deltaMouseY = e.clientY - startMouseY;
-
-          let newBoxLeft_style = initialBoxX_style + deltaMouseX;
-          let newBoxTop_style = initialBoxY_style + deltaMouseY;
-
-          // 获取图片在瓦片中实际渲染的尺寸和偏移
-          const {
-            displayWidth: imgActualDisplayWidth,
-            displayHeight: imgActualDisplayHeight,
-            offsetX: imgRenderOffsetX_inHolder, // 图片相对于 imageHolder 左上角的 X 偏移
-            offsetY: imgRenderOffsetY_inHolder, // 图片相对于 imageHolder 左上角的 Y 偏移
-          } = getDisplayedImageDimensions(imageFileObj, imageHolder);
-
-          // 限制拖动框的移动范围，确保它不会完全移出实际渲染的图片区域
-          // newBoxLeft_style 是相对于 imageHolder 的
-          newBoxLeft_style = Math.max(
-            imgRenderOffsetX_inHolder, // 左边界
-            Math.min(
-              newBoxLeft_style,
-              imgRenderOffsetX_inHolder +
-                imgActualDisplayWidth -
-                draggableBox.offsetWidth
-            ) // 右边界
-          );
-          newBoxTop_style = Math.max(
-            imgRenderOffsetY_inHolder, // 上边界
-            Math.min(
-              newBoxTop_style,
-              imgRenderOffsetY_inHolder +
-                imgActualDisplayHeight -
-                draggableBox.offsetHeight
-            ) // 下边界
-          );
-
-          // 1. 更新可拖动红框的位置
-          draggableBox.style.left = newBoxLeft_style + "px";
-          draggableBox.style.top = newBoxTop_style + "px";
-
-          // 2. 实时重绘静态遮罩以同步透明区域
-          staticCtx.clearRect(0, 0, staticCanvas.width, staticCanvas.height); // 清除整个静态画布
-
-          // 重新绘制覆盖整个图片显示区域的半透明层
-          staticCtx.fillStyle = "rgba(0, 0, 0, 0.6)";
-          staticCtx.fillRect(
-            imgRenderOffsetX_inHolder,
-            imgRenderOffsetY_inHolder,
-            imgActualDisplayWidth,
-            imgActualDisplayHeight
-          );
-
-          // 清除可拖动框当前对应的区域 (使用更新后的 style 值)
-          staticCtx.clearRect(
-            newBoxLeft_style,
-            newBoxTop_style,
-            draggableBox.offsetWidth,
-            draggableBox.offsetHeight
-          );
+        // 确保静态画布尺寸正确
+        if (
+          staticCanvas.width !== imageHolder.clientWidth ||
+          staticCanvas.height !== imageHolder.clientHeight
+        ) {
+          staticCanvas.width = imageHolder.clientWidth;
+          staticCanvas.height = imageHolder.clientHeight;
         }
+        staticCtx.clearRect(0, 0, staticCanvas.width, staticCanvas.height);
+        staticCtx.fillStyle = "rgba(0, 0, 0, 0.6)";
+        staticCtx.fillRect(
+          imgRenderOffsetX_inHolder,
+          imgRenderOffsetY_inHolder,
+          imgActualDisplayWidth,
+          imgActualDisplayHeight
+        );
+        // 清除可拖动框当前对应的区域
+        staticCtx.clearRect(
+          parseFloat(draggableBox.style.left || 0), // 使用 draggableBox 当前的 style 值
+          parseFloat(draggableBox.style.top || 0),
+          draggableBox.offsetWidth,
+          draggableBox.offsetHeight
+        );
+      }
 
-        function onMouseUpAfterDragging(e) {
-          imageFileObj.isUserInteracting = false; // 标记交互结束
-
-          document.removeEventListener("mousemove", onMouseMoveWhileDragging);
-          document.removeEventListener("mouseup", onMouseUpAfterDragging);
-
-          // 将拖动后的位置（在瓦片预览坐标系）转换回原始图片的坐标系，并存储
-          updateUserDefinedCropFromDraggableBox(imageFileObj);
-
-          log(`"${imageFileObj.name}" 裁剪区域已手动调整。`);
-          // 可选：拖动结束后，可以调用一次 updateTilePreview 来确保所有状态（包括 smartcropResult 可能的更新）
-          // 但如果只是为了更新遮罩，onMouseMove 已经做了。如果需要重新计算 smartcrop，则需要。
-          // 为了保持拖动后的用户选择，通常不应在此时强制覆盖 userDefinedCrop。
+      // **拖动逻辑实现**
+      function addDragFunctionality(imageFileObj) {
+        const draggableBox = imageFileObj.draggableCropBoxElement;
+        if (!draggableBox || !interact) {
+          // 确保 interact.js 已加载
+          console.warn(
+            `无法为 ${imageFileObj.name} 绑定交互功能，元素或 interact.js 未找到。`
+          );
+          return;
         }
+        const imageHolder =
+          imageFileObj.tileElement.querySelector(".image-holder");
+        const staticCanvas = imageFileObj.previewStaticMaskCanvas;
+        const staticCtx = staticCanvas.getContext("2d");
+
+        let initialX, initialY; // 用于计算拖动偏移
+
+        interact(draggableBox)
+          .draggable({
+            inertia: false, // 可以开启以获得更平滑的拖动结束效果
+            listeners: {
+              start(event) {
+                imageFileObj.isUserInteracting = true;
+                const rect = interact.getElementRect(event.target); // 获取元素当前位置和尺寸
+                // 保存初始的 transform 值 (interact.js 可能会用 transform 来移动)
+                // 或者，如果直接操作 left/top, 保存它们
+                initialX = parseFloat(event.target.style.left || rect.left);
+                initialY = parseFloat(event.target.style.top || rect.top);
+              },
+              move(event) {
+                const target = event.target;
+
+                // dx, dy 是本次移动的增量
+                let newLeft = parseFloat(target.style.left || 0) + event.dx;
+                let newTop = parseFloat(target.style.top || 0) + event.dy;
+
+                // interact.js 的 restrictRect modifier 应该已经处理了边界
+
+                const { displayWidth, displayHeight, offsetX, offsetY } =
+                  getDisplayedImageDimensions(imageFileObj, imageHolder);
+                newLeft = Math.max(
+                  offsetX,
+                  Math.min(newLeft, offsetX + displayWidth - target.offsetWidth)
+                );
+                newTop = Math.max(
+                  offsetY,
+                  Math.min(
+                    newTop,
+                    offsetY + displayHeight - target.offsetHeight
+                  )
+                );
+
+                target.style.left = newLeft + "px";
+                target.style.top = newTop + "px";
+
+                redrawStaticMaskAfterInteraction(imageFileObj); // 实时更新遮罩
+              },
+              end(event) {
+                imageFileObj.isUserInteracting = false;
+                updateUserDefinedCropFromDraggableBox(imageFileObj); // 保存最终状态
+                log(`"${imageFileObj.name}" 裁剪区域已手动拖动调整。`);
+              },
+            },
+          })
+          .resizable({
+            edges: { left: true, right: true, top: true, bottom: true },
+            listeners: {
+              move(event) {
+                const target = event.target;
+                let { x, y } = target.dataset;
+                x = (parseFloat(x) || 0) + event.deltaRect.left;
+                y = (parseFloat(y) || 0) + event.deltaRect.top;
+
+                // 更新元素的尺寸和位置 (interact.js 的 event.rect 包含新的尺寸)
+                target.style.width = event.rect.width + "px";
+                target.style.height = event.rect.height + "px";
+
+                let currentLeft = parseFloat(target.style.left || 0);
+                let currentTop = parseFloat(target.style.top || 0);
+
+                target.style.left = currentLeft + event.deltaRect.left + "px";
+                target.style.top = currentTop + event.deltaRect.top + "px";
+
+                // target.dataset.x = x; // 如果用 data-x/y 存储
+                // target.dataset.y = y;
+
+                redrawStaticMaskAfterInteraction(imageFileObj); // 实时更新遮罩
+                imageFileObj.isUserInteracting = true; // 标记交互中
+              },
+              end(event) {
+                imageFileObj.isUserInteracting = false;
+                updateUserDefinedCropFromDraggableBox(imageFileObj); // 保存最终状态
+                log(`"${imageFileObj.name}" 裁剪区域已手动缩放调整。`);
+              },
+            },
+            modifiers: [
+              interact.modifiers.restrictEdges({
+                outer: "parent", // 限制在父元素 (imageHolder) 内部
+              }),
+              interact.modifiers.restrictSize({
+                min: { width: 20, height: 20 }, // 最小缩放尺寸
+                // max: 可以基于 imageHolder 的尺寸设定最大尺寸
+              }),
+            ],
+            inertia: false,
+          });
       }
       function getDisplayedImageDimensions(imageFileObj, imageHolderElement) {
         const originalImgWidth = imageFileObj.originalWidth;
@@ -1123,7 +1154,13 @@
               imageFileObj.originalWidth * imageFileObj.originalHeight;
             const coveragePercentage =
               originalImageArea > 0 ? roleRegionArea / originalImageArea : 0;
-            console.log(coveragePercentage, roleRegionArea, originalImageArea,coveragePercentage >= Number(DIRECT_USE_THRESHOLD_PERCENTAGE),Number(DIRECT_USE_THRESHOLD_PERCENTAGE));
+            console.log(
+              coveragePercentage,
+              roleRegionArea,
+              originalImageArea,
+              coveragePercentage >= Number(DIRECT_USE_THRESHOLD_PERCENTAGE),
+              Number(DIRECT_USE_THRESHOLD_PERCENTAGE)
+            );
             // log(`"${imageFileObj.name}": API检测到角色区域覆盖原图 ${(coveragePercentage * 100).toFixed(1)}%`);
 
             if (coveragePercentage >= Number(DIRECT_USE_THRESHOLD_PERCENTAGE)) {
@@ -1460,13 +1497,12 @@
           const newValue = minValue + percent * (maxValue - minValue);
           setSliderValue(newValue);
         });
-        console.log('初始化:',DIRECT_USE_THRESHOLD_PERCENTAGE);
+        console.log("初始化:", DIRECT_USE_THRESHOLD_PERCENTAGE);
         // --- 初始化 ---
         setSliderValue(DIRECT_USE_THRESHOLD_PERCENTAGE); // 设置一个默认的初始值，例如0.5
 
         // --- 示例：监听滑块变化 ---
         track.addEventListener("sliderchange", function (event) {
-          // 你可以在这里做一些事情，比如根据滑块值改变页面元素的透明度
           DIRECT_USE_THRESHOLD_PERCENTAGE = event.detail.value.toFixed(2);
           console.log("滑块值改变:", DIRECT_USE_THRESHOLD_PERCENTAGE);
           // document.body.style.opacity = event.detail.value;
