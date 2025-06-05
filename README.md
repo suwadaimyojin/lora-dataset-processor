@@ -26,7 +26,6 @@
 *   **前端：**
     *   HTML5, CSS3, JavaScript (ES6+)
     *   [smartcrop.js](https://github.com/jwagner/smartcrop.js/): 核心智能裁剪库。
-    *   [JSZip](https://github.com/Stuk/jszip): 用于将图片打包成ZIP文件。
 *   **后端 (用于人物检测API)：**
     *   Python
     *   [imgutils](https://github.com/deepghs/imgutils): (示例中用于调用YOLOv8进行人物检测的库)
