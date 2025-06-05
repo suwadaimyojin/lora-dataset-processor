@@ -221,6 +221,85 @@
       .tile .image-holder.is-loading .loading-indicator {
         display: block; /* 加载时显示 */
       }
+
+      .slider-container {
+        padding: 20px;
+        background-color: #fff;
+        border-radius: 10px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        text-align: center;
+      }
+
+      .slider-label {
+        font-size: 16px;
+        color: #333;
+        margin-bottom: 15px;
+      }
+
+      .slider-track {
+        position: relative;
+        width: 100%;
+        height: 10px;
+        background-color: #e0e0e0;
+        border-radius: 5px;
+        cursor: pointer;
+        margin-bottom: 15px;
+      }
+
+      .slider-filled-track {
+        position: absolute;
+        left: 0;
+        top: 0;
+        height: 100%;
+        background-color: #007bff; /* 主题色 */
+        border-radius: 5px;
+      }
+
+      .slider-thumb {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 20px;
+        height: 20px;
+        background-color: #007bff;
+        border: 2px solid #fff;
+        border-radius: 50%;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        cursor: grab;
+        z-index: 2;
+      }
+
+      .slider-thumb:active {
+        cursor: grabbing;
+        box-shadow: 0 0 0 6px rgba(0, 123, 255, 0.2); /* 点击时的光晕效果 */
+      }
+
+      .slider-value-display {
+        font-size: 18px;
+        font-weight: bold;
+        color: #007bff;
+        padding: 8px 12px;
+        background-color: #e9f5ff;
+        border-radius: 5px;
+        display: inline-block;
+        min-width: 50px; /* 保证宽度一致性 */
+        text-align: center;
+      }
+
+      /* 可选：添加刻度标记 */
+      .tick-marks {
+        display: flex;
+        justify-content: space-between;
+        width: 100%;
+        padding: 0 5px; /* 调整以对齐滑块 */
+        box-sizing: border-box;
+        margin-top: -10px; /* 向上移动一点 */
+        margin-bottom: 10px;
+      }
+      .tick-mark {
+        font-size: 12px;
+        color: #777;
+      }
     </style>
   </head>
   <body>
@@ -248,6 +327,24 @@
         <!-- 更多如比例锁定、不缩放等选项可在此添加 -->
       </div>
 
+      <div class="settings-group">
+        <div class="slider-container">
+          <div class="slider-label">
+            角色信息/原图 占比 高于这个值直接使用API结果，低于这个值
+            使用API作为boost指导smartcrop:
+          </div>
+          <div class="slider-track" id="mySliderTrack">
+            <div class="slider-filled-track" id="mySliderFilledTrack"></div>
+            <div class="slider-thumb" id="mySliderThumb"></div>
+          </div>
+          <div class="tick-marks">
+            <span class="tick-mark">0.1</span>
+            <span class="tick-mark">0.55</span>
+            <span class="tick-mark">1.0</span>
+          </div>
+          <div class="slider-value-display" id="mySliderValue">0.1</div>
+        </div>
+      </div>
       <div class="settings-group">
         <h3>图像格式和质量</h3>
         <label for="outputFormat">输出格式:</label>
@@ -300,9 +397,10 @@
       );
       const removeAllButton = document.getElementById("removeAllButton");
 
-      let imageFiles = []; // 存储已上传图片的信息和处理状态
-      let uniqueIdCounter = 0;
-      let MAX_OUTPUT_DIM = 1024; // 最终输出任意一边不得超过的值
+      var imageFiles = []; // 存储已上传图片的信息和处理状态
+      var uniqueIdCounter = 0;
+      var MAX_OUTPUT_DIM = 1024; // 最终输出任意一边不得超过的值
+      var DIRECT_USE_THRESHOLD_PERCENTAGE = 0.7;
 
       // 如果你有一个输入框让用户设置它，例如 <input type="number" id="maxOutputDimInput" value="1024">
       const maxOutputDimInput = document.getElementById("maxOutputDimInput");
@@ -1009,9 +1107,8 @@
           imageFileObj.tileElement.querySelector(".image-holder");
 
         let finalCropSource_original; // 最终用于定位和确定尺寸的裁剪源 {x,y,width,height} (原始图片坐标)
-        
+
         /* 角色信息/原图 占比 阈值 80% —— 高于这个值直接使用API结果，低于这个值 使用API作为boost指导smartcrop  */
-        const DIRECT_USE_THRESHOLD_PERCENTAGE = 0.7;
 
         {
           // --- 用户未自定义，执行自动逻辑 ---
@@ -1026,10 +1123,10 @@
               imageFileObj.originalWidth * imageFileObj.originalHeight;
             const coveragePercentage =
               originalImageArea > 0 ? roleRegionArea / originalImageArea : 0;
-            console.log(coveragePercentage, roleRegionArea, originalImageArea);
+            console.log(coveragePercentage, roleRegionArea, originalImageArea,coveragePercentage >= Number(DIRECT_USE_THRESHOLD_PERCENTAGE),Number(DIRECT_USE_THRESHOLD_PERCENTAGE));
             // log(`"${imageFileObj.name}": API检测到角色区域覆盖原图 ${(coveragePercentage * 100).toFixed(1)}%`);
 
-            if (coveragePercentage >= DIRECT_USE_THRESHOLD_PERCENTAGE) {
+            if (coveragePercentage >= Number(DIRECT_USE_THRESHOLD_PERCENTAGE)) {
               // --- 逻辑2: API 调用且占比高于等于80%，直接使用API结果 ---
               log(
                 `"${imageFileObj.name}": 角色区域占比高 (${(
@@ -1075,7 +1172,11 @@
                   options
                 );
 
-                console.log(" 逻辑3: API 调用且占比低于80%，使用API作为boost指导smartcrop ",options,result);
+                console.log(
+                  " 逻辑3: API 调用且占比低于80%，使用API作为boost指导smartcrop ",
+                  options,
+                  result
+                );
 
                 imageFileObj.smartcropResult = {
                   topCrop: result.topCrop,
@@ -1110,7 +1211,11 @@
                 imageFileObj.imgElement,
                 options
               );
-              console.log(" 逻辑1: 没有从API获取到 boost 区域，则用smartcrop作为最终决策 (全局分析)",options,result);
+              console.log(
+                " 逻辑1: 没有从API获取到 boost 区域，则用smartcrop作为最终决策 (全局分析)",
+                options,
+                result
+              );
               imageFileObj.smartcropResult = {
                 topCrop: result.topCrop,
                 optionsUsed: options,
@@ -1255,6 +1360,124 @@
       }
 
       log("初始化完成。请上传图片。");
+    </script>
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        const track = document.getElementById("mySliderTrack");
+        const thumb = document.getElementById("mySliderThumb");
+        const filledTrack = document.getElementById("mySliderFilledTrack");
+        const valueDisplay = document.getElementById("mySliderValue");
+
+        const minValue = 0.1;
+        const maxValue = 1.0;
+        let currentValue = minValue; // 初始值
+        let isDragging = false;
+
+        // --- 初始化滑块位置和值 ---
+        function updateSliderVisuals(value) {
+          // 1. 规范化值到0-1的百分比
+          const percent = (value - minValue) / (maxValue - minValue);
+
+          // 2. 计算滑块的左边距
+          // 滑块的有效移动范围是轨道宽度减去滑块宽度
+          // 滑块的left值是相对于轨道左边缘的
+          const trackWidth = track.offsetWidth;
+          const thumbWidth = thumb.offsetWidth;
+          let thumbLeft = percent * (trackWidth - thumbWidth);
+
+          // 确保滑块在轨道内
+          thumbLeft = Math.max(0, Math.min(thumbLeft, trackWidth - thumbWidth));
+
+          thumb.style.left = thumbLeft + "px";
+          filledTrack.style.width = thumbLeft + thumbWidth / 2 + "px"; // 填充轨道到滑块中心
+          valueDisplay.textContent = value.toFixed(2); // 显示两位小数
+        }
+
+        // --- 设置滑块值 (外部或内部调用) ---
+        function setSliderValue(newValue, triggerChangeEvent = true) {
+          currentValue = Math.max(minValue, Math.min(newValue, maxValue));
+          updateSliderVisuals(currentValue);
+
+          if (triggerChangeEvent) {
+            // 触发自定义事件，方便外部监听
+            const event = new CustomEvent("sliderchange", {
+              detail: { value: currentValue },
+            });
+            track.dispatchEvent(event);
+          }
+        }
+
+        // --- 事件处理 ---
+        thumb.addEventListener("mousedown", function (event) {
+          isDragging = true;
+          thumb.style.cursor = "grabbing"; // 改变鼠标样式
+          document.body.style.userSelect = "none"; // 防止拖动时选中文本
+
+          // 阻止默认的拖拽行为（例如图片的拖拽）
+          event.preventDefault();
+        });
+
+        document.addEventListener("mousemove", function (event) {
+          if (!isDragging) return;
+
+          const trackRect = track.getBoundingClientRect();
+          // 鼠标在轨道内的相对X坐标
+          let mouseX = event.clientX - trackRect.left;
+
+          // 计算百分比，考虑滑块宽度，使滑块中心对准鼠标
+          const thumbWidth = thumb.offsetWidth;
+          const trackWidth = track.offsetWidth;
+
+          let percent = (mouseX - thumbWidth / 2) / (trackWidth - thumbWidth);
+          percent = Math.max(0, Math.min(1, percent)); // 限制在0-1
+
+          const newValue = minValue + percent * (maxValue - minValue);
+          setSliderValue(newValue);
+        });
+
+        document.addEventListener("mouseup", function () {
+          if (isDragging) {
+            isDragging = false;
+            thumb.style.cursor = "grab";
+            document.body.style.userSelect = ""; // 恢复文本选择
+          }
+        });
+
+        // 点击轨道直接设置滑块位置
+        track.addEventListener("click", function (event) {
+          // 如果点击的是滑块本身，mousedown事件会处理，这里避免重复
+          if (event.target === thumb) return;
+
+          const trackRect = track.getBoundingClientRect();
+          let mouseX = event.clientX - trackRect.left;
+
+          const thumbWidth = thumb.offsetWidth;
+          const trackWidth = track.offsetWidth;
+
+          let percent = (mouseX - thumbWidth / 2) / (trackWidth - thumbWidth);
+          percent = Math.max(0, Math.min(1, percent));
+
+          const newValue = minValue + percent * (maxValue - minValue);
+          setSliderValue(newValue);
+        });
+        console.log('初始化:',DIRECT_USE_THRESHOLD_PERCENTAGE);
+        // --- 初始化 ---
+        setSliderValue(DIRECT_USE_THRESHOLD_PERCENTAGE); // 设置一个默认的初始值，例如0.5
+
+        // --- 示例：监听滑块变化 ---
+        track.addEventListener("sliderchange", function (event) {
+          // 你可以在这里做一些事情，比如根据滑块值改变页面元素的透明度
+          DIRECT_USE_THRESHOLD_PERCENTAGE = event.detail.value.toFixed(2);
+          console.log("滑块值改变:", DIRECT_USE_THRESHOLD_PERCENTAGE);
+          // document.body.style.opacity = event.detail.value;
+        });
+
+        // 暴露设置值的接口（可选）
+        window.myCustomSlider = {
+          setValue: setSliderValue,
+          getValue: () => currentValue,
+        };
+      });
     </script>
   </body>
 </html>
