@@ -14,6 +14,7 @@
         height: 100vh;
         background-color: #f0f2f5;
       }
+
       .main-content {
         flex-grow: 1;
         padding: 20px;
@@ -21,6 +22,7 @@
         flex-direction: column;
         overflow-y: auto;
       }
+
       .sidebar {
         width: 400px;
         background-color: #ffffff;
@@ -38,6 +40,7 @@
         background-color: #fafafa;
         cursor: pointer;
       }
+
       .file-drop-area.dragover {
         background-color: #e0e0e0;
         border-color: #aaa;
@@ -49,29 +52,37 @@
         gap: 15px;
         justify-content: flex-start;
       }
+
       .tile {
-        width: 320px; /* 瓦片宽度 */
+        width: 320px;
+        /* 瓦片宽度 */
         border: 1px solid #ddd;
         background-color: #fff;
         padding: 8px;
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-        position: relative; /* 用于定位删除按钮和遮罩 */
+        position: relative;
+        /* 用于定位删除按钮和遮罩 */
       }
+
       .tile .image-holder {
         width: 100%;
         background-color: #eee;
         display: flex;
         align-items: center;
         justify-content: center;
-        overflow: hidden; /* 确保遮罩和图片在容器内 */
-        position: relative; /* 用于绝对定位图片和遮罩 */
+        overflow: hidden;
+        /* 确保遮罩和图片在容器内 */
+        position: relative;
+        /* 用于绝对定位图片和遮罩 */
       }
+
       .tile img.preview-image {
         /* 原始图片预览 */
         max-width: 100%;
         max-height: 100%;
         display: block;
       }
+
       .tile .crop-mask-overlay {
         /* 裁剪区域预览遮罩 */
         position: absolute;
@@ -79,14 +90,17 @@
         left: 0;
         width: 100%;
         height: 100%;
-        pointer-events: none; /* 允许下方元素交互 */
+        pointer-events: none;
+        /* 允许下方元素交互 */
       }
+
       .tile .filename {
         font-size: 0.8em;
         margin-top: 5px;
         word-break: break-all;
         text-align: center;
       }
+
       .tile .delete-btn {
         position: absolute;
         top: -5px;
@@ -101,8 +115,10 @@
         font-size: 12px;
         line-height: 20px;
         text-align: center;
-        display: none; /* 初始隐藏，鼠标悬停显示 */
+        display: none;
+        /* 初始隐藏，鼠标悬停显示 */
       }
+
       .tile:hover .delete-btn {
         display: block;
       }
@@ -113,6 +129,7 @@
         padding: 15px;
         border-radius: 4px;
       }
+
       .settings-group h3 {
         margin-top: 0;
         font-size: 1.1em;
@@ -121,6 +138,7 @@
         padding-bottom: 8px;
         margin-bottom: 12px;
       }
+
       .settings-group label,
       .settings-group input,
       .settings-group select,
@@ -129,22 +147,26 @@
         margin-bottom: 8px;
         width: calc(100% - 16px);
       }
+
       .settings-group input[type="number"],
       .settings-group input[type="text"] {
         padding: 8px;
         border: 1px solid #ccc;
         border-radius: 3px;
       }
+
       .settings-group input[type="checkbox"] {
         width: auto;
         display: inline-block;
         margin-right: 5px;
         vertical-align: middle;
       }
+
       .settings-group .inline-half {
         display: inline-block;
         width: calc(50% - 12px);
       }
+
       .settings-group .action-buttons button {
         background-color: #007bff;
         color: white;
@@ -153,15 +175,19 @@
         cursor: pointer;
         border-radius: 3px;
       }
+
       .settings-group .action-buttons button:hover {
         background-color: #0056b3;
       }
+
       .settings-group .action-buttons button.secondary {
         background-color: #6c757d;
       }
+
       .settings-group .action-buttons button.secondary:hover {
         background-color: #545b62;
       }
+
       #log {
         margin-top: auto;
         font-size: 0.8em;
@@ -172,9 +198,11 @@
         max-height: 100px;
         overflow-y: auto;
       }
+
       .tile .image-holder {
         /* ... 保持之前的样式 ... */
-        position: relative; /* 确保子绝对定位元素正确对齐 */
+        position: relative;
+        /* 确保子绝对定位元素正确对齐 */
       }
 
       .tile .preview-image {
@@ -190,19 +218,24 @@
         left: 0;
         width: 100%;
         height: 100%;
-        pointer-events: none; /* 这个canvas不响应鼠标事件 */
+        pointer-events: none;
+        /* 这个canvas不响应鼠标事件 */
       }
 
       .tile .draggable-crop-box {
         /* 用户可交互的裁剪框 */
         position: absolute;
-        border: 2px dashed rgba(255, 0, 0, 0.8); /* 鲜艳的虚线框 */
-        box-sizing: border-box; /* border 不增加元素的总宽高 */
+        border: 2px dashed rgba(255, 0, 0, 0.8);
+        /* 鲜艳的虚线框 */
+        box-sizing: border-box;
+        /* border 不增加元素的总宽高 */
         cursor: move;
         /* background-color: rgba(255, 255, 255, 0.1); 可选：轻微背景色 */
       }
+
       .tile .draggable-crop-box:hover {
-        background-color: rgba(255, 0, 0, 0.1); /* 悬停时轻微高亮 */
+        background-color: rgba(255, 0, 0, 0.1);
+        /* 悬停时轻微高亮 */
       }
 
       /* 为Loading状态添加一些基本样式 */
@@ -216,11 +249,15 @@
         padding: 8px 15px;
         border-radius: 5px;
         font-size: 0.9em;
-        z-index: 10; /* 确保在图片之上 */
-        display: none; /* 初始隐藏 */
+        z-index: 10;
+        /* 确保在图片之上 */
+        display: none;
+        /* 初始隐藏 */
       }
+
       .tile .image-holder.is-loading .loading-indicator {
-        display: block; /* 加载时显示 */
+        display: block;
+        /* 加载时显示 */
       }
 
       .slider-container {
@@ -252,7 +289,8 @@
         left: 0;
         top: 0;
         height: 100%;
-        background-color: #007bff; /* 主题色 */
+        background-color: #007bff;
+        /* 主题色 */
         border-radius: 5px;
       }
 
@@ -272,7 +310,8 @@
 
       .slider-thumb:active {
         cursor: grabbing;
-        box-shadow: 0 0 0 6px rgba(0, 123, 255, 0.2); /* 点击时的光晕效果 */
+        box-shadow: 0 0 0 6px rgba(0, 123, 255, 0.2);
+        /* 点击时的光晕效果 */
       }
 
       .slider-value-display {
@@ -283,7 +322,8 @@
         background-color: #e9f5ff;
         border-radius: 5px;
         display: inline-block;
-        min-width: 50px; /* 保证宽度一致性 */
+        min-width: 50px;
+        /* 保证宽度一致性 */
         text-align: center;
       }
 
@@ -292,17 +332,21 @@
         display: flex;
         justify-content: space-between;
         width: 100%;
-        padding: 0 5px; /* 调整以对齐滑块 */
+        padding: 0 5px;
+        /* 调整以对齐滑块 */
         box-sizing: border-box;
-        margin-top: -10px; /* 向上移动一点 */
+        margin-top: -10px;
+        /* 向上移动一点 */
         margin-bottom: 10px;
       }
+
       .tick-mark {
         font-size: 12px;
         color: #777;
       }
     </style>
   </head>
+
   <body>
     <div class="main-content">
       <div class="file-drop-area" id="fileDropArea">
@@ -766,9 +810,21 @@
             // ---- 计算最终输出的画布尺寸，满足 MAX_OUTPUT_DIM 约束 ----
             let outputWidth = finalCropSource_original.width;
             let outputHeight = finalCropSource_original.height;
-
             if (outputWidth > MAX_OUTPUT_DIM || outputHeight > MAX_OUTPUT_DIM) {
               const aspectRatio = outputWidth / outputHeight;
+
+              console.log(
+                "outputWidth,outputHeight",
+                outputWidth,
+                outputHeight
+              );
+              console.log(
+                "outputWidth / outputHeight",
+                outputWidth / outputHeight
+              );
+              console.log("imageFileObj", imageFileObj);
+              console.log("finalCropSource_original", finalCropSource_original);
+
               if (outputWidth > outputHeight) {
                 // 宽图，或方图以宽为准
                 outputWidth = MAX_OUTPUT_DIM;
@@ -836,7 +892,7 @@
               zip.file(outputFilename, blob);
               // log(`"${outputFilename}" 已添加到ZIP。`); // 可以减少日志输出
             } else {
-              saveAs(blob, outputFilename); 
+              saveAs(blob, outputFilename);
               // log(`"${outputFilename}" 已开始下载。`); // 可以减少日志输出
               await new Promise((r) => setTimeout(r, 100)); // 给浏览器一点喘息时间处理多个下载
             }
@@ -1148,131 +1204,28 @@
           );
 
           if (boostRegionsFromAPI && boostRegionsFromAPI.length > 0) {
-            const mainRoleRegion = boostRegionsFromAPI[0];
-            const roleRegionArea = mainRoleRegion.width * mainRoleRegion.height;
-            const originalImageArea =
-              imageFileObj.originalWidth * imageFileObj.originalHeight;
-            const coveragePercentage =
-              originalImageArea > 0 ? roleRegionArea / originalImageArea : 0;
-            console.log(
-              coveragePercentage,
-              roleRegionArea,
-              originalImageArea,
-              coveragePercentage >= Number(DIRECT_USE_THRESHOLD_PERCENTAGE),
-              Number(DIRECT_USE_THRESHOLD_PERCENTAGE)
-            );
-            // log(`"${imageFileObj.name}": API检测到角色区域覆盖原图 ${(coveragePercentage * 100).toFixed(1)}%`);
-
-            if (coveragePercentage >= Number(DIRECT_USE_THRESHOLD_PERCENTAGE)) {
-              // --- 逻辑2: API 调用且占比高于等于80%，直接使用API结果 ---
-              log(
-                `"${imageFileObj.name}": 角色区域占比高 (${(
-                  coveragePercentage * 100
-                ).toFixed(1)}%), 直接使用API检测范围。`
+            if (boostRegionsFromAPI.length === 1) {
+              finalCropSource_original = await boostRegionsFromAPISuccess(
+                boostRegionsFromAPI,
+                imageFileObj,
+                imageHolder
               );
-              finalCropSource_original = {
-                // 创建副本
-                x: mainRoleRegion.x,
-                y: mainRoleRegion.y,
-                width: mainRoleRegion.width,
-                height: mainRoleRegion.height,
-              };
-              imageFileObj.smartcropResult = null; // 清除旧的smartcropResult，因为我们跳过了它
-            } else {
-              // --- 逻辑3: API 调用且占比低于80%，使用API作为boost指导smartcrop ---
-              log(
-                `"${imageFileObj.name}": 角色区域占比较低，使用API区域作为boost指导smartcrop。`
-              );
-              const expansionFactor = 1.1; // 扩展因子，让smartcrop在角色区域周边探索
-              let analysisWidth = Math.min(
-                imageFileObj.originalWidth,
-                Math.round(mainRoleRegion.width * expansionFactor)
-              );
-              let analysisHeight = Math.min(
-                imageFileObj.originalHeight,
-                Math.round(mainRoleRegion.height * expansionFactor)
-              );
-              // 可选：调整 analysisHeight 以匹配某个目标宽高比
-              // const targetAnalysisAspectRatio = 1.2;
-              // analysisHeight = Math.round(analysisWidth / targetAnalysisAspectRatio);
-              // analysisHeight = Math.max(analysisHeight, mainRoleRegion.height);
-
-              const options = {
-                width: analysisWidth,
-                height: analysisHeight,
-                minScale: 0.5, // 示例 minScale，允许 smartcrop 进行一些优化
-                boost: [boostRegionsFromAPI[0]],
-              };
-              try {
-                const result = await smartcrop.crop(
-                  imageFileObj.imgElement,
-                  options
-                );
-
-                console.log(
-                  " 逻辑3: API 调用且占比低于80%，使用API作为boost指导smartcrop ",
-                  options,
-                  result
-                );
-
-                imageFileObj.smartcropResult = {
-                  topCrop: result.topCrop,
-                  optionsUsed: options,
-                  fullResult: result,
-                };
-                finalCropSource_original = result.topCrop;
-              } catch (error) {
-                log(
-                  `Smartcrop 处理 "${imageFileObj.name}" (有boost) 出错: ${error.message}`
-                );
-                // 出错回退：尝试使用API原始区域
-                finalCropSource_original = mainRoleRegion;
-              }
             }
+            if (boostRegionsFromAPI.length > 1) {
+              finalCropSource_original = await boostRegionsFromAPISuccessMutile(
+                boostRegionsFromAPI,
+                imageFileObj
+              );
+            }
+            console.log("逻辑1", finalCropSource_original);
           } else {
-            // --- 逻辑1: 没有从API获取到 boost 区域，则用smartcrop作为最终决策 (全局分析) ---
-            log(
-              `"${imageFileObj.name}": 未从API获取角色区域，进行全局smartcrop分析。`
+            finalCropSource_original = await boostRegionsFromAPIFailure(
+              boostRegionsFromAPI,
+              imageFileObj
             );
-            // 使用一个合理的分析尺寸，例如基于MAX_OUTPUT_DIM或原图尺寸的某个比例
-            const maxDimForGlobalAnalysis =
-              parseInt(maxOutputDimInput.value) || 1024; // 或者其他默认值
-
-            const options = {
-              width: maxDimForGlobalAnalysis,
-              height: maxDimForGlobalAnalysis,
-              minScale: 1, // 全局分析时，minScale可以更灵活
-            };
-            try {
-              const result = await smartcrop.crop(
-                imageFileObj.imgElement,
-                options
-              );
-              console.log(
-                " 逻辑1: 没有从API获取到 boost 区域，则用smartcrop作为最终决策 (全局分析)",
-                options,
-                result
-              );
-              imageFileObj.smartcropResult = {
-                topCrop: result.topCrop,
-                optionsUsed: options,
-                fullResult: result,
-              };
-              finalCropSource_original = result.topCrop;
-            } catch (error) {
-              log(
-                `Smartcrop 处理 "${imageFileObj.name}" (全局) 出错: ${error.message}`
-              );
-              // 最终极回退：使用全图
-              finalCropSource_original = {
-                x: 0,
-                y: 0,
-                width: imageFileObj.originalWidth,
-                height: imageFileObj.originalHeight,
-              };
-            }
+            console.log("逻辑2", finalCropSource_original);
           }
-        } // --- 用户未自定义逻辑结束 ---
+        }
 
         if (!finalCropSource_original) {
           log(
@@ -1285,7 +1238,27 @@
             height: imageFileObj.originalHeight,
           };
         }
+        if (Array.isArray(finalCropSource_original)) {
+          finalCropSource_original.forEach((e) => {
+            createDraggableCropBoxElement(e, imageFileObj, imageHolder);
+          });
+        } else {
+          createDraggableCropBoxElement(
+            finalCropSource_original,
+            imageFileObj,
+            imageHolder
+          );
+        }
 
+        // const end = performance.now();
+        // console.log(`updateTilePreview 执行时间: ${(end - start).toFixed(2)} 毫秒 for ${imageFileObj.name}`);
+      } // 在 updateAllPreviews 中调用 updateTilePreview
+
+      function createDraggableCropBoxElement(
+        finalCropSource_original,
+        imageFileObj,
+        imageHolder
+      ) {
         // 确保 finalCropSource_original 尺寸有效
         const cropBoxWidth_original = Math.max(
           1,
@@ -1382,10 +1355,220 @@
           constrainedBoxWidth_style,
           constrainedBoxHeight_style
         );
+      }
 
-        // const end = performance.now();
-        // console.log(`updateTilePreview 执行时间: ${(end - start).toFixed(2)} 毫秒 for ${imageFileObj.name}`);
-      } // 在 updateAllPreviews 中调用 updateTilePreview
+      async function boostRegionsFromAPISuccess(
+        boostRegionsFromAPI,
+        imageFileObj,
+        imageHolder
+      ) {
+        // 处理 boostRegions 的逻辑
+        console.log("boostRegionsFromAPISuccess", boostRegionsFromAPI);
+        const mainRoleRegion = boostRegionsFromAPI[0];
+        const roleRegionArea = mainRoleRegion.width * mainRoleRegion.height;
+        const originalImageArea =
+          imageFileObj.originalWidth * imageFileObj.originalHeight;
+        const coveragePercentage =
+          originalImageArea > 0 ? roleRegionArea / originalImageArea : 0;
+        console.log(
+          coveragePercentage,
+          roleRegionArea,
+          originalImageArea,
+          coveragePercentage >= Number(DIRECT_USE_THRESHOLD_PERCENTAGE),
+          Number(DIRECT_USE_THRESHOLD_PERCENTAGE)
+        );
+        // log(`"${imageFileObj.name}": API检测到角色区域覆盖原图 ${(coveragePercentage * 100).toFixed(1)}%`);
+
+        if (coveragePercentage >= Number(DIRECT_USE_THRESHOLD_PERCENTAGE)) {
+          // --- 逻辑2: API 调用且占比高于等于80%，直接使用API结果 ---
+          log(
+            `"${imageFileObj.name}": 角色区域占比高 (${(
+              coveragePercentage * 100
+            ).toFixed(1)}%), 直接使用API检测范围。`
+          );
+          finalCropSource_original = {
+            // 创建副本
+            x: mainRoleRegion.x,
+            y: mainRoleRegion.y,
+            width: mainRoleRegion.width,
+            height: mainRoleRegion.height,
+          };
+
+          imageFileObj.smartcropResult = {
+            topCrop: {
+              x: mainRoleRegion.x,
+              y: mainRoleRegion.y,
+              width: mainRoleRegion.width,
+              height: mainRoleRegion.height,
+            },
+          }; // 清除旧的smartcropResult，因为我们跳过了它
+          return finalCropSource_original;
+        } else {
+          // --- 逻辑3: API 调用且占比低于80%，使用API作为boost指导smartcrop ---
+          log(
+            `"${imageFileObj.name}": 角色区域占比较低，使用API区域作为boost指导smartcrop。`
+          );
+          const expansionFactor = 1.1; // 扩展因子，让smartcrop在角色区域周边探索
+          let analysisWidth = Math.min(
+            imageFileObj.originalWidth,
+            Math.round(mainRoleRegion.width * expansionFactor)
+          );
+          let analysisHeight = Math.min(
+            imageFileObj.originalHeight,
+            Math.round(mainRoleRegion.height * expansionFactor)
+          );
+          // 可选：调整 analysisHeight 以匹配某个目标宽高比
+          // const targetAnalysisAspectRatio = 1.2;
+          // analysisHeight = Math.round(analysisWidth / targetAnalysisAspectRatio);
+          // analysisHeight = Math.max(analysisHeight, mainRoleRegion.height);
+
+          const options = {
+            width: analysisWidth,
+            height: analysisHeight,
+            minScale: 0.5, // 示例 minScale，允许 smartcrop 进行一些优化
+            boost: [boostRegionsFromAPI[0]],
+          };
+          try {
+            const result = await smartcrop.crop(
+              imageFileObj.imgElement,
+              options
+            );
+
+            console.log(
+              " 逻辑3: API 调用且占比低于80%，使用API作为boost指导smartcrop ",
+              options,
+              result
+            );
+
+            imageFileObj.smartcropResult = {
+              topCrop: result.topCrop,
+              optionsUsed: options,
+              fullResult: result,
+            };
+            finalCropSource_original = result.topCrop;
+            return finalCropSource_original;
+          } catch (error) {
+            log(
+              `Smartcrop 处理 "${imageFileObj.name}" (有boost) 出错: ${error.message}`
+            );
+            // 出错回退：尝试使用API原始区域
+            finalCropSource_original = mainRoleRegion;
+            return finalCropSource_original;
+          }
+        }
+      }
+
+      async function boostRegionsFromAPISuccessMutile(
+        boostRegionsFromAPI,
+        imageFileObj
+      ) {
+        let finalCropSource_originalArray = [];
+        for (let i = 0; i < boostRegionsFromAPI.length; i++) {
+          let mainRoleRegion = boostRegionsFromAPI[i];
+          console.log("我是i", i, boostRegionsFromAPI, boostRegionsFromAPI[i]);
+          let roleRegionArea = mainRoleRegion.width * mainRoleRegion.height;
+          let originalImageArea =
+            imageFileObj.originalWidth * imageFileObj.originalHeight;
+          let coveragePercentage =
+            originalImageArea > 0 ? roleRegionArea / originalImageArea : 0;
+          let expansionFactor = 1.1; // 扩展因子，让smartcrop在角色区域周边探索
+          let analysisWidth = Math.min(
+            imageFileObj.originalWidth,
+            Math.round(mainRoleRegion.width * expansionFactor)
+          );
+          let analysisHeight = Math.min(
+            imageFileObj.originalHeight,
+            Math.round(mainRoleRegion.height * expansionFactor)
+          );
+          // 可选：调整 analysisHeight 以匹配某个目标宽高比
+          // let targetAnalysisAspectRatio = 1.2;
+          // analysisHeight = Math.round(analysisWidth / targetAnalysisAspectRatio);
+          // analysisHeight = Math.max(analysisHeight, mainRoleRegion.height);
+
+          let options = {
+            width: analysisWidth,
+            height: analysisHeight,
+            minScale: 0.5, // 示例 minScale，允许 smartcrop 进行一些优化
+            boost: [boostRegionsFromAPI[i]],
+          };
+          try {
+            let result = await smartcrop.crop(imageFileObj.imgElement, options);
+
+            console.log(
+              " 逻辑3: API 调用且占比低于80%，使用API作为boost指导smartcrop ",
+              options,
+              result
+            );
+            imageFileObj.smartcropResult = {
+              topCrop: result.topCrop,
+              optionsUsed: options,
+              fullResult: result,
+            };
+            finalCropSource_original = result.topCrop;
+            finalCropSource_originalArray.push(finalCropSource_original);
+          } catch (error) {
+            log(
+              `Smartcrop 处理 "${imageFileObj.name}" (有boost) 出错: ${error.message}`
+            );
+            // 出错回退：尝试使用API原始区域
+            finalCropSource_original = mainRoleRegion;
+            finalCropSource_originalArray.push(finalCropSource_original);
+          }
+          console.log(
+            finalCropSource_originalArray,
+            "finalCropSource_originalArray"
+          );
+        }
+        return finalCropSource_originalArray;
+      }
+
+      async function boostRegionsFromAPIFailure(
+        boostRegionsFromAPI,
+        imageFileObj
+      ) {
+        // 处理错误逻辑
+        // --- 逻辑1: 没有从API获取到 boost 区域，则用smartcrop作为最终决策 (全局分析) ---
+        log(
+          `"${imageFileObj.name}": 未从API获取角色区域，进行全局smartcrop分析。`
+        );
+        // 使用一个合理的分析尺寸，例如基于MAX_OUTPUT_DIM或原图尺寸的某个比例
+        const maxDimForGlobalAnalysis =
+          parseInt(maxOutputDimInput.value) || 1024; // 或者其他默认值
+
+        const options = {
+          width: maxDimForGlobalAnalysis,
+          height: maxDimForGlobalAnalysis,
+          minScale: 1, // 全局分析时，minScale可以更灵活
+        };
+        try {
+          const result = await smartcrop.crop(imageFileObj.imgElement, options);
+          console.log(
+            " 逻辑1: 没有从API获取到 boost 区域，则用smartcrop作为最终决策 (全局分析)",
+            options,
+            result
+          );
+          imageFileObj.smartcropResult = {
+            topCrop: result.topCrop,
+            optionsUsed: options,
+            fullResult: result,
+          };
+          finalCropSource_original = result.topCrop;
+          return finalCropSource_original;
+        } catch (error) {
+          log(
+            `Smartcrop 处理 "${imageFileObj.name}" (全局) 出错: ${error.message}`
+          );
+          // 最终极回退：使用全图
+          finalCropSource_original = {
+            x: 0,
+            y: 0,
+            width: imageFileObj.originalWidth,
+            height: imageFileObj.originalHeight,
+          };
+          return finalCropSource_original;
+        }
+      }
+
       function updateAllPreviews() {
         log(`全局设置已更改，正在更新所有 ${imageFiles.length} 个预览...`);
         imageFiles.forEach((imgFile) => {
