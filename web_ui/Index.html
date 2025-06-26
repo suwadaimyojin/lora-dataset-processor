@@ -498,7 +498,7 @@
         handleFiles({ target: { files: files } });
       }
 
-      function handleFiles(event) {
+     async function handleFiles(event) {
         const files = event.target.files;
         if (!files || files.length === 0) return;
 
@@ -508,7 +508,7 @@
             log(`文件 "${file.name}" 不是图片，已跳过。`);
             continue;
           }
-          addFileToList(file); // 等待每个文件处理完成（包括API调用）
+         await addFileToList(file); // 等待每个文件处理完成（包括API调用）
         }
         fileInput.value = "";
       }
@@ -547,6 +547,7 @@
           img.src = e.target.result;
         };
         reader.readAsDataURL(file);
+      
       }
 
       function createImageTile(imageFileObj) {
